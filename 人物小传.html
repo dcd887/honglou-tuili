@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>紅樓推理 · 人物小傳</title>
+<style>
+:root{
+  --paper:#f3ecdf; --paper2:#eae1d0; --card:#faf6ec;
+  --ink:#2a2622; --ink2:#5c554b; --faint:#8d8577;
+  --zhu:#a63a2a; --line:#d3c8b4;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{color:var(--ink)}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:"Songti SC","STSong",Georgia,"Noto Serif SC",serif;
+  display:flex; align-items:center; justify-content:center; padding:8px;
+}
+#app{
+  width:min(100%,1200px,calc((100vh - 88px) * 1.66667));
+  aspect-ratio:1200/720; max-height:calc(100vh - 88px);
+  display:flex; flex-direction:column; min-height:0; gap:5px;
+}
+header{flex:0 0 auto; display:flex; align-items:baseline; gap:10px; border-bottom:1px solid var(--line); padding-bottom:5px}
+header h1{font-size:20px; font-weight:600; letter-spacing:.1em; flex:0 0 auto}
+header .sub{font-size:10.5px; color:var(--faint); letter-spacing:.02em; flex:1 1 auto; min-width:0;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+header .rom{flex:0 0 auto; font-size:11px; color:var(--zhu); border:1px solid var(--line); padding:1px 6px}
+#flt{flex:0 0 auto; display:flex; align-items:center; gap:5px; flex-wrap:nowrap; overflow:hidden}
+#flt .lab{flex:0 0 auto; font-size:11px; color:var(--faint); letter-spacing:.04em}
+button.f{flex:0 0 auto; font:inherit; font-size:11px; color:var(--ink2); background:var(--card);
+         border:1px solid var(--line); padding:2px 9px; cursor:pointer; letter-spacing:.06em}
+button.f:hover{border-color:var(--faint); color:var(--ink)}
+button.f.on{color:var(--paper); background:var(--zhu); border-color:var(--zhu)}
+#flt .tip{margin-left:auto; flex:0 1 auto; min-width:0; font-size:10px; color:var(--faint);
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+#scroll{flex:1 1 auto; min-height:0; overflow:auto; overflow-x:hidden; overscroll-behavior:contain}
+#grid{display:grid; grid-template-columns:1fr 1fr; align-items:start; gap:5px; padding:1px 3px 2px 1px}
+.card{background:var(--card); border:1px solid var(--line); padding:4px 8px 5px}
+.card.hide{display:none}
+.card .top{display:flex; align-items:baseline; gap:8px; border-bottom:1px solid var(--line);
+           padding-bottom:2px; margin-bottom:2px}
+.card .nm{flex:0 0 auto; font-size:14.5px; font-weight:600; letter-spacing:.08em}
+.card .note{flex:1 1 auto; min-width:0; font-size:9.5px; color:var(--faint);
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.card .acts{flex:0 0 auto; font-size:10px; color:var(--zhu); letter-spacing:.03em}
+.row{padding:1px 0 2px}
+.row + .row{border-top:1px dotted var(--line)}
+.row .l1{display:flex; align-items:baseline; gap:6px}
+.row .ac{flex:0 0 auto; font-size:10px; color:var(--zhu); letter-spacing:.03em}
+.row .as{flex:0 0 auto; font-size:9.5px; color:var(--faint); border:1px solid var(--line); padding:0 3px}
+.row .id{flex:1 1 auto; min-width:0; font-size:10.5px; color:var(--ink); line-height:1.3}
+.row .an{font-size:10.5px; color:var(--ink2); line-height:1.34; margin-top:1px}
+.row .an .src{color:var(--faint)}
+footer{flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px;
+       border-top:1px solid var(--line); padding-top:5px; font-size:10.5px; color:var(--faint)}
+footer .hint{flex:1 1 auto; min-width:0; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+footer a{flex:0 0 auto; color:var(--zhu); text-decoration:none; letter-spacing:.06em}
+footer a:hover{color:var(--ink)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>司命辭典 · 人物小傳</h1>
+    <div class="sub">按人聚合 · 五幕人物 · 底本 程甲本（PG24264）· 錨點逐字核對</div>
+    <div class="rom">24 人</div>
+  </header>
+  <nav id="flt"><span class="lab">分幕：</span><button class="f on" type="button" data-n="0">全部</button><button class="f" type="button" data-n="1">第一幕</button><button class="f" type="button" data-n="2">第二幕</button><button class="f" type="button" data-n="3">第三幕</button><button class="f" type="button" data-n="4">第四幕</button><button class="f" type="button" data-n="5">第五幕</button><span class="tip">組內兩列 · 內容可捲動 · 按 1–5 篩幕、0 復位</span></nav>
+  <main id="scroll"><div id="grid"></div></main>
+  <footer>
+    <div class="hint" id="stat"></div>
+    <a href="合卷.html">← 回五幕合卷</a>
+  </footer>
+</div>
+<script>
+var D = {
+ "ui": {
+  "all": "全部",
+  "acts": [
+   "第一幕",
+   "第二幕",
+   "第三幕",
+   "第四幕",
+   "第五幕"
+  ],
+  "nums": [
+   "一",
+   "二",
+   "三",
+   "四",
+   "五"
+  ],
+  "noAnchor": "本幕未引原文",
+  "statLab": "共 ",
+  "statMid": " 人 · ",
+  "statTail": " 條幕內身份 · 錨點命中 ",
+  "unit": "人",
+  "back": "← 回五幕合卷",
+  "backHref": "合卷.html"
+ },
+ "hit": 35,
+ "rows": 35,
+ "n": 24,
+ "people": [
+  {
+   "nm": "寶釵",
+   "note": "",
+   "rows": [
+    {
+     "a": 1,
+     "nm": "寶釵",
+     "id": "主 · 金陵薛氏 ｜ 正冊 ｜ 親戚 · 姻眷",
+     "an": "任是無情也動人",
+     "ch": 63
+    },
+    {
+     "a": 2,
+     "nm": "寶釵",
+     "id": "侍立 ｜ 客居 ｜ 薛姑娘",
+     "an": "寶釵，黛玉因何不見",
+     "ch": 18
+    }
+   ]
+  },
+  {
+   "nm": "黛玉",
+   "note": "",
+   "rows": [
+    {
+     "a": 1,
+     "nm": "黛玉",
+     "id": "客 · 寄居 ｜ 正冊 ｜ 親戚 · 客居",
+     "an": "莫怨東風當自嗟",
+     "ch": 63
+    },
+    {
+     "a": 2,
+     "nm": "黛玉",
+     "id": "侍立 ｜ 客居 ｜ 林姑娘",
+     "an": "外眷無職，未敢擅入",
+     "ch": 18
+    },
+    {
+     "a": 4,
+     "nm": "黛玉",
+     "id": "林家的女兒 ｜ 姿② 伏著桌子噯喲",
+     "an": "林黛玉笑岔了气，伏著桌子噯喲",
+     "ch": 40
+    }
+   ]
+  },
+  {
+   "nm": "探春",
+   "note": "",
+   "rows": [
+    {
+     "a": 1,
+     "nm": "探春",
+     "id": "主 · 政老爹之庶出 ｜ 正冊 ｜ 賈家 · 主支",
+     "an": "日邊紅杏倚云栽",
+     "ch": 63
+    },
+    {
+     "a": 3,
+     "nm": "探春",
+     "id": "三小姐 ｜ 秋爽齋 ｜ 抗得住",
+     "an": "我原比眾人歹毒，凡丫頭所有的東西我都知道",
+     "ch": 74
+    },
+    {
+     "a": 4,
+     "nm": "探春",
+     "id": "三小姐 ｜ 姿⑦ 飯碗都合在迎春身上",
+     "an": "探春手里的飯碗都合在迎春身上",
+     "ch": 40
+    }
+   ]
+  },
+  {
+   "nm": "湘雲",
+   "note": "第四幕作「湘云」",
+   "rows": [
+    {
+     "a": 1,
+     "nm": "湘雲",
+     "id": "主 · 保齡侯史家 ｜ 正冊 ｜ 親戚 · 姻眷",
+     "an": "只恐夜深花睡去",
+     "ch": 63
+    },
+    {
+     "a": 4,
+     "nm": "湘云",
+     "id": "史家的姪女 ｜ 姿① 一口飯都噴了出來",
+     "an": "史湘云撐不住，一口飯都噴了出來",
+     "ch": 40
+    }
+   ]
+  },
+  {
+   "nm": "李紈",
+   "note": "",
+   "rows": [
+    {
+     "a": 1,
+     "nm": "李紈",
+     "id": "主 · 珠大奶奶 ｜ 正冊 ｜ 賈家 · 主支",
+     "an": "竹篱茅舍自甘心",
+     "ch": 63
+    }
+   ]
+  },
+  {
+   "nm": "香菱",
+   "note": "第一幕簽面作「并蒂花」",
+   "rows": [
+    {
+     "a": 1,
+     "nm": "香菱",
+     "id": "妾 · 薛蟠之妾 ｜ 副冊 ｜ 婢 · 姓不載",
+     "an": "連理枝頭花正開",
+     "ch": 63
+    }
+   ]
+  },
+  {
+   "nm": "襲人",
+   "note": "",
+   "rows": [
+    {
+     "a": 1,
+     "nm": "襲人",
+     "id": "婢 · 寶玉的丫鬟 ｜ 又副冊 ｜ 婢 · 姓可辨",
+     "an": "桃紅又是一年春",
+     "ch": 63
+    }
+   ]
+  },
+  {
+   "nm": "麝月",
+   "note": "第一幕兩個鍵（鏈② 作 she／鏈③ 作 moon），此處照幕內寫法",
+   "rows": [
+    {
+     "a": 1,
+     "nm": "麝月",
+     "id": "婢 · 寶玉的丫鬟 ｜ 無冊 ｜ 婢 · 姓可辨",
+     "an": "開到荼□花事了",
+     "ch": 63
+    }
+   ]
+  },
+  {
+   "nm": "元春",
+   "note": "",
+   "rows": [
+    {
+     "a": 2,
+     "nm": "元春",
+     "id": "主位 ｜ 貴妃",
+     "an": "諭免禮歸座，大開筵宴",
+     "ch": 18
+    }
+   ]
+  },
+  {
+   "nm": "賈母",
+   "note": "",
+   "rows": [
+    {
+     "a": 2,
+     "nm": "賈母",
+     "id": "陪坐 ｜ 老太太",
+     "an": "賈母等在下相陪",
+     "ch": 18
+    },
+    {
+     "a": 4,
+     "nm": "賈母",
+     "id": "史太君 ｜ 姿④ 摟著寶玉叫\"心肝\"",
+     "an": "賈母笑的摟著寶玉叫\"心肝\"",
+     "ch": 40
+    }
+   ]
+  },
+  {
+   "nm": "王夫人",
+   "note": "",
+   "rows": [
+    {
+     "a": 2,
+     "nm": "王夫人",
+     "id": "陪坐 ｜ 太太",
+     "an": "一手攙賈母，一手攙王夫人",
+     "ch": 18
+    },
+    {
+     "a": 4,
+     "nm": "王夫人",
+     "id": "賈母的媳婦 ｜ 姿⑤ 用手指著鳳姐儿",
+     "an": "王夫人笑的用手指著鳳姐儿",
+     "ch": 40
+    }
+   ]
+  },
+  {
+   "nm": "賈政",
+   "note": "",
+   "rows": [
+    {
+     "a": 2,
+     "nm": "賈政",
+     "id": "侍立 ｜ 老爺",
+     "an": "引賈赦，賈政等于月台下排班",
+     "ch": 18
+    }
+   ]
+  },
+  {
+   "nm": "寶玉",
+   "note": "",
+   "rows": [
+    {
+     "a": 2,
+     "nm": "寶玉",
+     "id": "侍立 ｜ 宗親 ｜ 寶二爺",
+     "an": "無諭，外男不敢擅入",
+     "ch": 18
+    },
+    {
+     "a": 4,
+     "nm": "寶玉",
+     "id": "賈母的孫子 ｜ 姿③ 滾到賈母怀里",
+     "an": "寶玉早滾到賈母怀里",
+     "ch": 40
+    },
+    {
+     "a": 5,
+     "nm": "寶玉",
+     "id": "榮國府的公子 ｜ 靈側 ｜ 垂手 · 立在一邊",
+     "an": "寶玉下了車，忙忙奔至停靈之室，痛哭一番",
+     "ch": 13
+    }
+   ]
+  },
+  {
+   "nm": "齡官",
+   "note": "",
+   "rows": [
+    {
+     "a": 2,
+     "nm": "齡官",
+     "id": "廊下 ｜ 外眷 ｜ 齡官",
+     "an": "帶領十二個女戲，在樓下正等",
+     "ch": 18
+    }
+   ]
+  },
+  {
+   "nm": "惜春",
+   "note": "",
+   "rows": [
+    {
+     "a": 3,
+     "nm": "惜春",
+     "id": "四小姐 ｜ 暖香塢",
+     "an": "誰知竟在入畫箱中尋出一大包金銀錁子來",
+     "ch": 74
+    },
+    {
+     "a": 4,
+     "nm": "惜春",
+     "id": "四小姐 ｜ 姿⑧ 离了坐位叫揉一揉腸子",
+     "an": "惜春离了坐位，拉著他奶母叫揉一揉腸子",
+     "ch": 40
+    }
+   ]
+  },
+  {
+   "nm": "迎春",
+   "note": "",
+   "rows": [
+    {
+     "a": 3,
+     "nm": "迎春",
+     "id": "二小姐 ｜ 紫菱洲",
+     "an": "迎春已經睡著了，丫鬟們也才要睡，眾人叩門半日才開",
+     "ch": 74
+    }
+   ]
+  },
+  {
+   "nm": "司棋",
+   "note": "",
+   "rows": [
+    {
+     "a": 3,
+     "nm": "司棋",
+     "id": "迎春的丫鬟 ｜ 紫菱洲 ｜ 逐出園",
+     "an": "便伸手掣出一雙男子的錦帶襪并一雙緞鞋來",
+     "ch": 74
+    }
+   ]
+  },
+  {
+   "nm": "晴雯",
+   "note": "",
+   "rows": [
+    {
+     "a": 3,
+     "nm": "晴雯",
+     "id": "寶玉的丫鬟 ｜ 怡紅院",
+     "an": "只見晴雯挽著頭發闖進來，豁一聲將箱子掀開",
+     "ch": 74
+    }
+   ]
+  },
+  {
+   "nm": "王善保家的",
+   "note": "",
+   "rows": [
+    {
+     "a": 3,
+     "nm": "王善保家的",
+     "id": "邢夫人陪房 ｜ 抄檢隊 ｜ 告密",
+     "an": "王善保家的走來，方才正是他送香囊來的",
+     "ch": 74
+    }
+   ]
+  },
+  {
+   "nm": "薛姨媽",
+   "note": "",
+   "rows": [
+    {
+     "a": 4,
+     "nm": "薛姨媽",
+     "id": "寶釵的母親 ｜ 姿⑥ 茶噴了探春一裙子",
+     "an": "薛姨媽也撐不住，口里茶噴了探春一裙子",
+     "ch": 40
+    }
+   ]
+  },
+  {
+   "nm": "賈珍",
+   "note": "",
+   "rows": [
+    {
+     "a": 5,
+     "nm": "賈珍",
+     "id": "寧國府的當家人 ｜ 靈前 ｜ 拄拐 · 一只手扶著拐",
+     "an": "賈珍此時也有些病症在身，二則過于悲痛了，因拄個拐踱了進來．",
+     "ch": 13
+    }
+   ]
+  },
+  {
+   "nm": "尤氏",
+   "note": "",
+   "rows": [
+    {
+     "a": 5,
+     "nm": "尤氏",
+     "id": "寧國府的當家奶奶 ｜ 內室 ｜ 伏枕 · 帳子裡沒起來",
+     "an": "但里面尤氏又犯了舊疾，不能料理事務",
+     "ch": 13
+    }
+   ]
+  },
+  {
+   "nm": "鳳姐",
+   "note": "第五幕名帖作「鳳姐」，全名王熙鳳",
+   "rows": [
+    {
+     "a": 5,
+     "nm": "鳳姐",
+     "id": "榮國府璉二奶奶 ｜ 靈側 ｜ 點人 · 手裡按著冊子",
+     "an": "往后藏之不迭，獨鳳姐款款站了起來",
+     "ch": 13
+    }
+   ]
+  },
+  {
+   "nm": "賈蓉",
+   "note": "",
+   "rows": [
+    {
+     "a": 5,
+     "nm": "賈蓉",
+     "id": "亡者之夫 ｜ 廊下 ｜ 領憑 · 剛從外頭回來",
+     "an": "賈珍命賈蓉次日換了吉服，領憑回來",
+     "ch": 13
+    }
+   ]
+  }
+ ]
+};
+var Q = document.createElement.bind(document);
+var flt = document.getElementById('flt'), grid = document.getElementById('grid');
+var stat = document.getElementById('stat');
+
+function actLab(n){ return D.ui.acts[n-1]; }
+function actsOf(p){ var s = [], i; for(i = 0; i < p.rows.length; i++) if (s.indexOf(p.rows[i].a) < 0) s.push(p.rows[i].a); return s; }
+
+/* ---- cards: one per person, per-act sub-rows ---- */
+D.people.forEach(function(p){
+  var c = Q('article'); c.className = 'card';
+  var acts = actsOf(p);
+  var top = Q('div'); top.className = 'top';
+  var nm = Q('span'); nm.className = 'nm'; nm.textContent = p.nm; top.appendChild(nm);
+  if (p.note){ var nt = Q('span'); nt.className = 'note'; nt.textContent = p.note; top.appendChild(nt); }
+  var ac = Q('span'); ac.className = 'acts';
+  ac.textContent = acts.map(function(n){ return D.ui.nums[n-1]; }).join('·');
+  top.appendChild(ac);
+  c.appendChild(top);
+
+  p.rows.forEach(function(r){
+    var d = Q('div'); d.className = 'row';
+    var l1 = Q('div'); l1.className = 'l1';
+    var a = Q('span'); a.className = 'ac'; a.textContent = actLab(r.a); l1.appendChild(a);
+    if (r.nm !== p.nm){ var sp = Q('span'); sp.className = 'as'; sp.textContent = r.nm; l1.appendChild(sp); }
+    var id = Q('span'); id.className = 'id'; id.textContent = r.id; l1.appendChild(id);
+    d.appendChild(l1);
+    var an = Q('div'); an.className = 'an';
+    if (r.an){
+      an.appendChild(document.createTextNode('「' + r.an + '」'));
+      var src = Q('span'); src.className = 'src';
+      src.textContent = '（第' + r.ch + '回 · 程甲本）';
+      an.appendChild(src);
+    } else {
+      an.textContent = D.ui.noAnchor;
+    }
+    d.appendChild(an);
+    d.setAttribute('data-act', r.a);
+    c.appendChild(d);
+  });
+  c.setAttribute('data-acts', acts.join(','));
+  grid.appendChild(c);
+});
+
+/* ---- filter by act ---- */
+var cards = [].slice.call(grid.querySelectorAll('.card'));
+function show(n){
+  var vis = 0;
+  cards.forEach(function(c){
+    var ok = !n || (',' + c.getAttribute('data-acts') + ',').indexOf(',' + n + ',') >= 0;
+    c.classList.toggle('hide', !ok);
+    if (ok) vis++;
+  });
+  [].slice.call(flt.querySelectorAll('button.f')).forEach(function(b){
+    b.classList.toggle('on', String(b.getAttribute('data-n')) === String(n || 0));
+  });
+  stat.textContent = D.ui.statLab + vis + D.ui.statMid + D.rows + D.ui.statTail + D.hit + '/' + D.rows;
+  grid.parentNode.scrollTop = 0;
+}
+[].slice.call(flt.querySelectorAll('button.f')).forEach(function(b){
+  b.addEventListener('click', function(){ show(parseInt(b.getAttribute('data-n'), 10) || 0); });
+});
+
+/* number keys 1-5 = act, 0 = all, Esc = back to all */
+document.addEventListener('keydown', function(e){
+  if (e.key >= '1' && e.key <= '5') show(+e.key);
+  else if (e.key === '0' || e.key === 'Escape') show(0);
+});
+
+show(0);
+</script>
+</body>
+</html>

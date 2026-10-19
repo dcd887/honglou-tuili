@@ -1,0 +1,1887 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>紅樓推理 · 劉姥姥進大觀園 · 牙牌令 · 第四幕</title>
+<style>
+  /* ══ 色板：與前三幕逐字相同 —— 9 個 token + 既有平塗舊木 #b9a88c ══
+     本幕實機只用到 8 個值：paper / paper2 / card / ink / ink2 / faint / zhu / #b9a88c
+     （--line 與 --line2 兩支保留在 :root 裡、全篇不用，故不入實機取值）。
+     午宴不用「亮底」：亮靠檐、牆、地面三個面與墨線撐出來，色板一個不加。 */
+  :root{
+    --paper:#f3ecdf; --paper2:#eae1d0; --card:#faf6ec;
+    --ink:#2a2622; --ink2:#5c554b; --faint:#8d8577;
+    --zhu:#a63a2a; --line:#d3c8b4; --line2:#c0b49d;
+    --l1:2.2px; --l2:1.4px; --l3:0.9px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:"Songti SC","STSong",Georgia,"Noto Serif SC",serif;
+    display:flex; align-items:center; justify-content:center; padding:12px;
+  }
+  /* ══ 窗口自適應（硬規則 ①）════════════════════════════════════════════
+     舞台恆為 1200:720。寬度同時受三個上界約束：視窗寬、設計寬 1200、
+     以及「視窗高 − 台賬 64 − 上下留白 24」換算過來的寬。三者取最小 —— 於是
+     任何窗口比例下整幅畫面等比完整可見：不裁切左右，也不裁切上下，
+     並且 html/body 已 overflow:hidden，不會出現滾動條。 */
+  #app{width:min(100%,1200px,calc((100vh - 88px) * 1.66667));display:flex;flex-direction:column;min-height:0}
+  #stage{display:block;width:100%;height:auto;aspect-ratio:1200/720;background:var(--paper);overflow:hidden}
+  #hud{height:64px;flex:0 0 64px;display:flex;align-items:center;gap:14px;
+       background:var(--paper);border-top:1px solid var(--faint);padding:0 6px}
+  #slots{display:flex;gap:4px}
+  .slot{width:56px;height:56px;border:1px solid transparent;position:relative;cursor:default}
+  .slot .under{position:absolute;left:8px;right:8px;bottom:6px;height:1px;background:var(--faint)}
+  .slot svg{display:block;width:52px;height:52px;margin:1px;transition:transform 120ms ease}
+  .slot.has{cursor:pointer}
+  .slot.sel{border-color:var(--zhu)}
+  .slot.sel svg{transform:translateY(-2px)}
+  #caption{margin-left:auto;margin-right:8px;max-width:62%;
+           font-family:"Kaiti SC","STKaiti","KaiTi",serif;
+           font-size:13px;line-height:1.6;color:var(--ink2);text-align:right;
+           opacity:0;transition:opacity 500ms ease}
+  #caption.on{opacity:1}
+  #caption.zhu{color:var(--zhu)}
+  /* ══ 繁／簡切換鍵（角標位）：只用既有 token，不新增顏色 ══ */
+  #langbtn{
+    flex:0 0 auto;margin:0 6px 0 2px;padding:5px 11px;cursor:pointer;
+    font-family:"Kaiti SC","STKaiti","KaiTi",serif;font-size:13px;letter-spacing:.1em;
+    color:var(--ink2);background:var(--card);border:1px solid var(--faint);border-radius:2px;
+  }
+  #langbtn:hover{color:var(--zhu);border-color:var(--zhu)}
+  #langbtn:focus-visible{outline:1px solid var(--zhu);outline-offset:2px}
+
+  /* ══ 線寬三級（與前三幕同值；vector-effect 保證跨視圖不漂移）══ */
+  .l1{stroke:var(--ink);stroke-width:var(--l1);stroke-linecap:round;stroke-linejoin:round;fill:none;vector-effect:non-scaling-stroke}
+  .l2{stroke:var(--ink2);stroke-width:var(--l2);stroke-linecap:round;stroke-linejoin:round;fill:none;vector-effect:non-scaling-stroke}
+  .l3{stroke:var(--faint);stroke-width:var(--l3);stroke-linecap:round;stroke-linejoin:round;fill:none;vector-effect:non-scaling-stroke}
+  .miter{stroke-linejoin:miter}
+  .f-wood{fill:#b9a88c}
+  .f-card{fill:var(--card)}
+  .f-paper{fill:var(--paper)}
+  .f-p2{fill:var(--paper2)}
+  .f-zhu{fill:var(--zhu)}
+  .tx{fill:var(--ink);font-family:"Songti SC","STSong",Georgia,serif}
+  .tx-k{fill:var(--ink);font-family:"Kaiti SC","STKaiti","KaiTi",serif}
+  .tx-z{fill:var(--zhu);font-family:"Kaiti SC","STKaiti","KaiTi",serif}
+  .shadow{fill:var(--ink);opacity:.08;stroke:none}
+  /* 舞台內的圖元一律以 fill / stroke 取色，不用 currentColor；
+     把 SVG 節點的 color 一次釘在墨色上，免得「實機取值」把瀏覽器對 SVG
+     的黑色 color 預設算成第 9 個顏色（那不是畫出來的顏色）。 */
+  #stage, #stage *{color:var(--ink)}
+
+  /* ══ 視圖切換（本幕 2 個圖形視圖 + 2 種紙頁）══ */
+  .view{opacity:0;pointer-events:none;transition:opacity 460ms ease}
+  .view.active{opacity:1;pointer-events:auto}
+
+  /* ══ 命中（硬規則 ②）：非活動層的整棵子樹都不收鼠標 ═════════════════
+     pointer-events 可繼承，但子元素一旦顯式寫值就壓過繼承；而 opacity:0
+     的元素照樣參與命中測試 —— 兩者相乘，看不見的層會偷走真人的點擊。
+     所以：不改任何 .hit 的既有寫法，只把非活動層整棵釘死。 */
+  .view:not(.active), .view:not(.active) *,
+  #ledger:not(.on), #ledger:not(.on) *,
+  #bridge:not(.on), #bridge:not(.on) *,
+  .paper:not(.show), .paper:not(.show) *{pointer-events:none!important}
+  /* 司命簿／幕間壓在上面時，底下的場景也整棵釘死（syncModal 掛 .modal）*/
+  #world.modal .view, #world.modal .view *{pointer-events:none!important}
+  /* 展開中的紙頁維持原樣：自己吃鼠標，於是不會漏點到紙後面那些熱點 */
+  #paper-layer{pointer-events:none}
+  #paper-layer .paper.show{pointer-events:auto}
+
+  /* ══ 熱點：默認 / 可點 / 已取 三態 ══ */
+  .hs{cursor:default}
+  .hs .hit{fill:transparent;stroke:none;pointer-events:all}
+  .hs.on .hit{cursor:pointer}
+  .hs.on:hover .art > path,.hs.on:hover .art > rect,.hs.on:hover .art > circle,
+  .hs.on:hover .art > ellipse,.hs.on:hover .art > line,.hs.on:hover .art > polygon,
+  .hs.on:hover .art > g > path{stroke:var(--zhu);stroke-width:3}
+  .hs.armed .art > path,.hs.armed .art > rect,.hs.armed .art > circle,
+  .hs.armed .art > ellipse,.hs.armed .art > line,.hs.armed .art > polygon,
+  .hs.armed .art > g > path{stroke:var(--zhu);stroke-width:3}
+  .hs.on:hover .art > text,.hs.armed .art > text{fill:var(--zhu)}
+  .hs.on:hover > text,.hs.armed > text{fill:var(--zhu)}
+  .hs.gone, .hs.gone *{pointer-events:none}
+  .hs.gone .art,.hs.gone > text{opacity:0}
+
+  /* ══ 視角規格：屏幕坐標 = 正面坐標 + 深度·(0,−0.5) ══ */
+  .floor{fill:var(--card);stroke:none}
+  .slab{fill:var(--card);stroke:none}
+  .recess{fill:var(--paper2);stroke:none}
+
+  /* ══ 世界變化 ① 牌入姿框（框裡的字才顯形）══ */
+  .posecell .inp{opacity:0;transition:opacity 340ms ease}
+  .posecell.set .inp{opacity:1}
+  /* ══ 世界變化 ② 箸入席（席上的字才顯形）══ */
+  .placecell .inp{opacity:0;transition:opacity 340ms ease}
+  .placecell.set .inp{opacity:1}
+  /* ══ 世界變化 ③ 用意既定（簽上的朱框才出來）══ */
+  .intentcell .ink{opacity:0;transition:opacity 340ms ease}
+  .intentcell.set .ink{opacity:1}
+  /* ══ 世界變化 ④ 朱印 ══ */
+  .seal{opacity:0;transition:opacity 420ms ease;pointer-events:none}
+  .seal.on{opacity:1}
+  /* ══ 世界變化 ⑤ 落錯時整框暗一檔（現場變化）══ */
+  .posecell,.placecell,.cardcell,.chopcell,.intentcell{transition:opacity 200ms ease}
+  .posecell.dimmed,.placecell.dimmed,.cardcell.dimmed,
+  .chopcell.dimmed,.intentcell.dimmed{opacity:.3}
+  /* ══ 錯法：手上的東西抖一下（東西仍在原處）══ */
+  @keyframes shake{0%,100%{transform:translateX(0)}35%{transform:translateX(-3px)}70%{transform:translateX(3px)}}
+  .shaking{animation:shake 130ms ease-in-out 2}
+  /* ══ 錯法：牌順案沿滑回、箸順席沿滑回（現場變化，東西不消失、可立即重放）══ */
+  @keyframes fall{0%{opacity:.95}100%{opacity:0}}
+  .ghost{opacity:0}
+  .ghost.fall{animation:fall 460ms ease-in forwards}
+
+  /* ══ 紙（在場景內展開，不切屏、不加暗底遮罩）══ */
+  .paper{opacity:0;pointer-events:none;transition:opacity 260ms ease}
+  .paper.show{opacity:1;pointer-events:auto}
+  .paper-title{font-size:21px;fill:var(--ink);letter-spacing:.18em}
+  .paper-sub{font-size:13px;fill:var(--faint);letter-spacing:.1em}
+  .paper-body{font-size:16px;fill:var(--ink);font-family:"Kaiti SC","STKaiti","KaiTi",serif;letter-spacing:.02em}
+  .paper-body .key{font-size:18px}
+  .paper-close{font-size:12px;fill:var(--faint);letter-spacing:.08em}
+
+  /* ══ 外殼：司命簿（沿用前三幕的同一套 .led-*，只改字面）══ */
+  #ledger{opacity:0;pointer-events:none;transition:opacity 420ms ease}
+  #ledger.on{opacity:1;pointer-events:auto}
+  .led-lede{font-size:26px;fill:var(--ink);letter-spacing:.22em}
+  .led-sub{font-size:13px;fill:var(--faint);letter-spacing:.12em}
+  .led-item{font-size:18px;fill:var(--ink);font-family:"Kaiti SC","STKaiti","KaiTi",serif;letter-spacing:.04em}
+  .led-item.done{fill:var(--faint)}
+  .led-act{font-size:21px;fill:var(--ink);letter-spacing:.2em}
+  .led-hint{font-size:13px;fill:var(--faint);letter-spacing:.1em}
+  #bridge{opacity:0;pointer-events:none;transition:opacity 380ms ease}
+  #bridge.on{opacity:1;pointer-events:auto}
+  .br-lede{font-size:22px;fill:var(--ink);letter-spacing:.2em}
+  .br-body{font-size:16px;fill:var(--ink);font-family:"Kaiti SC","STKaiti","KaiTi",serif}
+  .br-sub{font-size:13px;fill:var(--faint);letter-spacing:.1em}
+
+  #boot{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;
+        justify-content:center;font-size:15px;color:var(--ink2);letter-spacing:.3em;z-index:9}
+  #boot.gone{display:none}
+</style>
+</head>
+<body>
+
+<div id="boot">劉 姥 姥 進 大 觀 園</div>
+
+<div id="app">
+  <svg id="stage" viewBox="0 0 1200 720" shape-rendering="geometricPrecision"
+       role="application" aria-label="紅樓推理 劉姥姥進大觀園 牙牌令 第四幕">
+    <rect x="0" y="0" width="1200" height="720" fill="var(--paper)"/>
+    <g id="world">
+
+      <!-- ══════════════════ view-room：大觀園午宴 · 一幀（全景）══════════════════
+           檐 / 牆 / 地面 / 燈 —— 四件齊備，每件東西都待在一個面上，腳下壓一層
+           8% 墨接觸影。畫面裡不寫任何位置註釋、不寫任何名姓：人是誰，只在原文裡。
+           八個人各擺一姿（噴飯／伏桌／滾進懷裡／摟著／指人／茶噴／飯碗合人／離座），
+           姿與姿不同，位置也散開 —— 不是一排人。 -->
+      <g id="view-room" class="view active">
+        <path class="f-wood" d="M-4,0 L1204,0 L1204,18 L-4,18 Z"/>
+        <path class="l3" d="M-4,18 C300,16.6 900,19.2 1204,17.6"/>
+        <path class="l3" d="M92,18 L92,34 M292,18 L292,34 M492,18 L492,34 M692,18 L692,34 M892,18 L892,34 M1092,18 L1092,34"/>
+        <path class="f-p2" d="M-4,18 L1204,18 L1204,470 L-4,470 Z"/>
+        <path class="l3" d="M-4,458 C300,456.6 900,459.2 1204,457.6"/>
+        <path class="floor" d="M-4,470 C300,468.6 900,471.2 1204,469.6 L1204,720 L-4,720 Z"/>
+        <path class="l2" d="M-4,470 C300,468.6 900,471.2 1204,469.6"/>
+        <!-- 匾：園名 -->
+        <path class="l1 f-card" d="M148,96 L500,95 L500,150 L148,151 Z"/>
+        <text class="tx-k" x="324" y="132" font-size="20" text-anchor="middle" letter-spacing=".34em">大 觀 園</text>
+        <!-- 兩盞燈（光源） -->
+        <path class="l3" d="M120,18 L120,94 M1150,18 L1150,94"/>
+        <path class="l1 f-card" d="M96,94 C106,90 134,90 144,94 L140,148 C130,152 110,152 100,148 Z"/>
+        <circle cx="120" cy="118" r="2.8" fill="var(--zhu)"/>
+        <path class="l1 f-card" d="M1126,94 C1136,90 1164,90 1174,94 L1170,148 C1160,152 1140,152 1130,148 Z"/>
+        <circle cx="1150" cy="118" r="2.8" fill="var(--zhu)"/>
+
+        <!-- 遠一排人（畫在席面之前，下半身被席面遮住）-->
+        <g id="figs-far"></g>
+        <!-- 小楠木桌旁的劉姥姥（不可點）-->
+        <g id="figs-guest"></g>
+
+        <!-- 席面 -->
+        <path class="shadow" d="M296,428 L944,426 L952,444 L288,446 Z"/>
+        <path class="l1 f-wood" d="M312,332 L928,330 L948,430 L292,432 Z"/>
+        <path class="l1 f-card" d="M324,342 L916,340 L932,420 L308,422 Z"/>
+        <path class="l2" d="M292,432 L948,430"/>
+        <path class="f-wood" d="M300,432 L940,430 L938,470 L302,472 Z"/>
+        <path class="l3" d="M310,462 L930,460"/>
+        <!-- 席上的器（碗 · 碟 · 壺 · 箸）-->
+        <path class="l2 f-card" d="M378,384 C392,374 432,374 446,384 C432,394 392,394 378,384 Z"/>
+        <path class="l3" d="M406,378 C410,370 414,370 418,378"/>
+        <path class="l2 f-card" d="M488,392 C502,382 542,382 556,392 C542,402 502,402 488,392 Z"/>
+        <path class="l2 f-card" d="M616,380 C630,370 670,370 684,380 C670,390 630,390 616,380 Z"/>
+        <path class="l3" d="M644,374 C648,366 652,366 656,374"/>
+        <path class="l2 f-card" d="M742,392 C756,382 796,382 810,392 C796,402 756,402 742,392 Z"/>
+        <path class="l1 f-card" d="M836,372 C850,364 872,364 886,372 L882,398 C868,404 848,404 838,398 Z"/>
+        <path class="l3" d="M362,404 L404,400 M446,406 L486,402 M700,404 L742,400"/>
+        <path class="l2" d="M540,352 L604,350 M556,356 L620,354"/>
+
+        <!-- 小楠木桌（劉姥姥的一席）-->
+        <path class="l1 f-wood" d="M96,404 L252,402 L258,470 L90,472 Z"/>
+        <path class="l3" d="M104,462 L246,460"/>
+        <path class="l2 f-card" d="M120,398 C132,392 160,392 172,398 C160,406 132,406 120,398 Z"/>
+
+        <!-- 近一排人（畫在席面之後）-->
+        <g id="figs-near"></g>
+        <!-- 地下的媳婦丫頭（不可點，無 .hs）-->
+        <g id="figs-servants"></g>
+
+        <!-- 三個出入口（紙頁與近景）-->
+        <g class="hs on" data-hs="h_room_rule" id="hs_room_rule">
+          <rect class="hit" x="660" y="24" width="120" height="40"/>
+          <g class="art"><path class="l1 miter" d="M666,30 L774,30 L774,58 L666,58 Z" fill="none"/></g>
+          <text class="tx-k" x="720" y="53" font-size="13" text-anchor="middle">席上體例</text>
+        </g>
+        <g class="hs on" data-hs="h_room_src" id="hs_room_src">
+          <rect class="hit" x="792" y="24" width="120" height="40"/>
+          <g class="art"><path class="l1 miter" d="M798,30 L906,30 L906,58 L798,58 Z" fill="none"/></g>
+          <text class="tx-k" x="852" y="53" font-size="13" text-anchor="middle">引文</text>
+        </g>
+        <g class="hs on" data-hs="h_room_close" id="hs_room_close">
+          <rect class="hit" x="924" y="24" width="120" height="40"/>
+          <g class="art"><path class="l1 miter" d="M930,30 L1038,30 L1038,58 L930,58 Z" fill="none"/></g>
+          <text class="tx-k" x="984" y="53" font-size="13" text-anchor="middle">近前看席</text>
+        </g>
+      </g>
+
+      <!-- ══════════════════ view-close：席面近景（兩條鏈都在這裡）══════════
+           上帶＝鏈① 認笑態（八個姿框 + 八張名牌）；下帶＝鏈② 辨箸（三雙箸 + 三個去處 + 一簽用意）。
+           兩條鏈互不相讀：姿框判「這一姿是誰」，箸位判「這一雙去哪」，簽判「這一次的用意」。 -->
+      <g id="view-close" class="view">
+        <path class="floor" d="M0,0 L1200,0 L1200,720 L0,720 Z"/>
+        <path class="l1 f-wood" d="M24,20.4 C74,18.6 128,21.2 176,19.6 L178,70.4 C128,72.2 74,69.6 24,71.4 Z"/>
+        <text class="tx-k" x="101" y="54" font-size="18" text-anchor="middle" letter-spacing=".22em">牙 牌 令</text>
+        <g class="hs on" data-hs="h_close_rule" id="hs_close_rule">
+          <rect class="hit" x="196" y="20" width="118" height="46"/>
+          <g class="art"><path class="l1 miter" d="M202,26 L308,26 L308,60 L202,60 Z" fill="none"/></g>
+          <text class="tx-k" x="255" y="52" font-size="13" text-anchor="middle">席上體例</text>
+        </g>
+        <g class="hs on" data-hs="h_close_src" id="hs_close_src">
+          <rect class="hit" x="326" y="20" width="110" height="46"/>
+          <g class="art"><path class="l1 miter" d="M332,26 L430,26 L430,60 L332,60 Z" fill="none"/></g>
+          <text class="tx-k" x="381" y="52" font-size="13" text-anchor="middle">引文</text>
+        </g>
+        <g class="hs on" data-hs="h_close_room" id="hs_close_room">
+          <rect class="hit" x="448" y="20" width="128" height="46"/>
+          <g class="art"><path class="l1 miter" d="M454,26 L570,26 L570,60 L454,60 Z" fill="none"/></g>
+          <text class="tx-k" x="512" y="52" font-size="13" text-anchor="middle">回席上</text>
+        </g>
+
+        <!-- ── 鏈① 認笑態 ─────────────────────────────────────────── -->
+        <path class="l1 f-wood" d="M24,84.4 C300,82.6 900,85.2 1176,83.6 L1176,406.4 C900,408.2 300,405.6 24,407.4 Z"/>
+        <path class="l1 f-card" d="M36,96.4 C300,94.6 900,97.2 1164,95.6 L1164,394.4 C900,396.2 300,393.6 36,395.4 Z"/>
+        <text class="tx-k" x="52" y="130" font-size="16" letter-spacing=".3em">認 笑 態</text>
+        <text class="led-hint" x="176" y="130">八個人各擺一姿 —— 誰是哪一姿，只在原文那一句裡。</text>
+        <g id="pose-cells"></g>
+        <g id="card-box"></g>
+        <g class="hs gone" data-hs="h_seal_pose" id="hs_seal_pose">
+          <rect class="hit" x="700" y="96" width="196" height="42"/>
+          <g class="art"><path class="l1 miter" d="M706,102 L890,102 L890,132 L706,132 Z" fill="none"/></g>
+          <text class="tx-k" x="798" y="124" font-size="14" text-anchor="middle" letter-spacing=".12em">笑態用印</text>
+        </g>
+        <g class="seal" id="seal-pose">
+          <path class="f-zhu" d="M720,96 L876,95 L876,132 L720,133 Z"/>
+          <text class="tx-k" x="798" y="121" font-size="16" text-anchor="middle" fill="#faf6ec">笑態</text>
+        </g>
+
+        <!-- ── 鏈② 辨箸 ───────────────────────────────────────────── -->
+        <path class="l1 f-wood" d="M24,420.4 C300,418.6 900,421.2 1176,419.6 L1176,712.4 C900,714.2 300,711.6 24,713.4 Z"/>
+        <path class="l1 f-card" d="M36,432.4 C300,430.6 900,433.2 1164,431.6 L1164,700.4 C900,702.2 300,699.6 36,701.4 Z"/>
+        <text class="tx-k" x="52" y="466" font-size="16" letter-spacing=".3em">辨 箸</text>
+        <text class="led-hint" x="128" y="466">三雙箸，三處去處 —— 哪一雙擺在哪裡，原文一句一句寫著。</text>
+        <g id="place-cells"></g>
+        <text class="tx-k" x="828" y="480" font-size="12" fill="var(--faint)" letter-spacing=".2em">案 上 三 雙</text>
+        <g id="chop-box"></g>
+        <text class="tx-k" x="40" y="606" font-size="13" fill="var(--faint)" letter-spacing=".2em">這 一 次 的 用 意</text>
+        <g id="intent-cells"></g>
+        <g class="hs gone" data-hs="h_seal_chop" id="hs_seal_chop">
+          <rect class="hit" x="556" y="622" width="200" height="52"/>
+          <g class="art"><path class="l1 miter" d="M562,628 L750,628 L750,668 L562,668 Z" fill="none"/></g>
+          <text class="tx-k" x="656" y="656" font-size="15" text-anchor="middle" letter-spacing=".12em">箸用印</text>
+        </g>
+        <g class="seal" id="seal-chop">
+          <path class="f-zhu" d="M800,622 L920,621 L920,674 L800,675 Z"/>
+          <text class="tx-k" x="860" y="656" font-size="16" text-anchor="middle" fill="#faf6ec">箸</text>
+        </g>
+        <!-- 席角的兩隻空碗（攤開的現場，不是熱點）-->
+        <path class="l3" d="M968,640 C984,630 1020,630 1036,640 C1020,650 984,650 968,640 Z"/>
+        <path class="l3" d="M1060,654 C1076,644 1112,644 1128,654 C1112,664 1076,664 1060,654 Z"/>
+      </g>
+
+      <!-- ══════════════════ 司命簿（外殼）══════════════════ -->
+      <g id="ledger" class="on">
+        <rect x="0" y="0" width="1200" height="720" fill="var(--paper)"/>
+        <g class="art">
+          <path class="l1 f-wood" d="M262,72.4 C480,70.6 720,73.2 938,71.6 L940,648.4 C720,650.2 480,647.6 262,649.4 Z"/>
+          <path class="l1 f-card" d="M286,96.4 C480,94.8 720,97.2 914,95.6 L916,624.4 C720,626.2 480,623.6 286,625.4 Z"/>
+          <path class="l2" d="M300,176 C480,174.4 720,177 900,175.4"/>
+          <path class="l2" d="M300,436 C480,434.4 720,437 900,435.4"/>
+        </g>
+        <text class="led-lede" x="600" y="140" text-anchor="middle">司 命 簿 · 本 席 差 事</text>
+        <text class="led-sub" x="600" y="162" text-anchor="middle">大觀園 午宴 一幀 · 第四幕</text>
+        <g id="led-items">
+          <circle id="led-dot-1" class="l2" cx="356" cy="221" r="8" fill="none"/>
+          <text class="led-item" id="led-tx-1" x="390" y="228">認笑態 —— 八張名牌各歸一姿，用印</text>
+          <circle id="led-dot-2" class="l2" cx="356" cy="283" r="8" fill="none"/>
+          <text class="led-item" id="led-tx-2" x="390" y="290">辨箸 —— 三雙箸各歸一處，定用意，用印</text>
+          <circle id="led-dot-3" class="l2" cx="356" cy="345" r="8" fill="none"/>
+          <text class="led-item" id="led-tx-3" x="390" y="352">寫校勘記 —— 笑態、箸、字形三條</text>
+        </g>
+        <g class="hs on" data-hs="h_ledger_enter">
+          <rect class="hit" x="330" y="456" width="540" height="70"/>
+          <g class="art"><path class="l1 miter" d="M336,462 L864,462 L864,520 L336,520 Z" fill="none"/></g>
+          <text class="led-act" x="600" y="504" text-anchor="middle">入 席</text>
+        </g>
+        <g id="hs_led_bridge" class="hs on" data-hs="h_ledger_bridge">
+          <rect class="hit" x="330" y="532" width="320" height="58"/>
+          <g class="art">
+            <path class="l1 miter" d="M336,538 L644,538 L644,584 L336,584 Z" fill="none"/>
+            <text class="led-act" x="490" y="568" text-anchor="middle" font-size="15">幕間：上一幕交下來的話</text>
+          </g>
+        </g>
+        <g id="hs_led_notes" class="hs on gone" data-hs="h_ledger_notes">
+          <rect class="hit" x="664" y="532" width="206" height="58"/>
+          <g class="art">
+            <path class="l1 miter" d="M670,538 L864,538 L864,584 L670,584 Z" fill="none"/>
+            <text class="led-act" x="767" y="568" text-anchor="middle" font-size="15">取 閱 校 勘 記</text>
+          </g>
+        </g>
+        <text class="led-hint" id="led-hint" x="600" y="666" text-anchor="middle">席上沒有題目 —— 只有一席菜、八個人、八張名牌、三雙箸、一簽用意。</text>
+      </g>
+
+      <!-- ══════════════════ 幕間過渡頁（外殼）══════════════════ -->
+      <g id="bridge">
+        <rect x="0" y="0" width="1200" height="720" fill="var(--paper)"/>
+        <g class="art">
+          <path class="l1 f-card" d="M312,112.4 C520,110.6 720,113.2 896,111.6 L898,608.4 C720,610.2 520,607.6 312,609.4 Z"/>
+          <path class="l1 f-wood" d="M330,92.4 C520,90.6 720,93.2 878,91.6 L880,120.4 C720,122.2 520,119.6 330,121.4 Z"/>
+        </g>
+        <text class="br-lede" x="600" y="168" text-anchor="middle">幕 間 · 前 一 幕 交 下 來 的 話</text>
+        <text class="br-sub" x="600" y="192" text-anchor="middle">紅樓推理 第四班</text>
+        <g id="bridge-lines"></g>
+        <g class="hs on" data-hs="h_bridge_go">
+          <rect class="hit" x="470" y="536" width="260" height="60"/>
+          <g class="art"><path class="l1 miter" d="M476,542 L724,542 L724,590 L476,590 Z" fill="none"/></g>
+          <text class="led-act" x="600" y="576" text-anchor="middle" font-size="19">收 起 · 入 席</text>
+        </g>
+        <g class="hs on" data-hs="h_bridge_back">
+          <rect class="hit" x="132" y="536" width="200" height="60"/>
+          <g class="art"><path class="l1 miter" d="M138,542 L326,542 L326,590 L138,590 Z" fill="none"/></g>
+          <text class="led-act" x="232" y="576" text-anchor="middle" font-size="17">回 司 命 簿</text>
+        </g>
+      </g>
+
+      <g id="paper-layer"></g>
+      <g id="snd" style="cursor:pointer">
+        <rect x="1136" y="86" width="44" height="44" fill="transparent"/>
+        <text class="tx-k" x="1158" y="116" font-size="19" text-anchor="middle">聲</text>
+      </g>
+      <g id="bk" style="cursor:pointer">
+        <rect x="1084" y="86" width="44" height="44" fill="transparent"/>
+        <text class="tx-k" x="1106" y="116" font-size="19" text-anchor="middle">簿</text>
+      </g>
+    </g>
+  </svg>
+
+  <div id="hud">
+    <div id="slots"></div>
+    <div id="caption"></div>
+    <button id="langbtn" type="button" data-lang="t" aria-label="切換簡體（現為繁體）" title="現為繁體 · 點一下切換簡體">切換簡體</button>
+  </div>
+</div>
+
+<svg id="symdefs" width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="symroot">
+<symbol id="sym_fig" viewBox="0 0 80 170">
+<path class="l2" d="M26,16 C30,6 50,6 54,16"/>
+<circle class="l1" cx="40" cy="28" r="12"/>
+<path class="l1" d="M40,40 C30,42 24,48 22,56 L20,72 C30,76 50,76 60,72 L58,56 C56,48 50,42 40,40 Z"/>
+<path class="l2" d="M24,78 C16,94 14,112 16,126 M56,78 C64,94 66,112 64,126"/>
+<path class="l1" d="M22,72 C12,90 10,122 12,152 C28,158 52,158 68,152 C70,122 68,90 58,72 Z"/>
+<path class="l3" d="M20,134 C30,138 50,138 60,134 M40,82 L40,150"/>
+<path class="l2" d="M12,152 L68,152 L76,168 L4,168 Z"/>
+</symbol>
+<symbol id="sym_child" viewBox="0 0 80 130">
+<path class="l2" d="M34,12 C38,4 56,4 60,12"/>
+<circle class="l1" cx="48" cy="26" r="11"/>
+<path class="l1" d="M52,38 C40,44 26,58 20,74 C18,90 24,102 34,106 C50,110 66,102 72,88 C76,72 70,52 62,44 Z"/>
+<path class="l2" d="M34,94 C44,102 58,100 66,92"/>
+<path class="l3" d="M26,70 C36,76 48,76 58,70"/>
+<path class="l2" d="M22,104 L66,108 L68,124 L18,122 Z"/>
+</symbol>
+<symbol id="sym_stand" viewBox="0 0 80 200">
+<path class="l2" d="M26,14 C30,4 50,4 54,14"/>
+<circle class="l1" cx="40" cy="26" r="11"/>
+<path class="l1" d="M40,37 C30,39 24,45 22,53 L21,70 C31,74 49,74 59,70 L58,53 C56,45 50,39 40,37 Z"/>
+<path class="l2" d="M23,74 C15,92 13,116 15,134 M57,74 C65,92 67,116 65,134"/>
+<path class="l1" d="M21,70 C12,96 10,140 12,176 C28,183 52,183 68,176 C70,140 68,96 59,70 Z"/>
+<path class="l3" d="M19,150 C30,155 50,155 61,150 M40,80 L40,174"/>
+<path class="l2" d="M12,176 L68,176 L74,198 L6,198 Z"/>
+</symbol>
+<symbol id="sym_maid" viewBox="0 0 60 120">
+<path class="l2" d="M22,7 C24,2 36,2 38,7"/>
+<circle class="l1" cx="30" cy="14" r="7.5"/>
+<path class="l1" d="M30,21 C24,22.5 20,27 19,33 L18,46 C24,49 36,49 42,46 L41,33 C40,27 36,22.5 30,21 Z"/>
+<path class="l2" d="M19,34 C14,42 13,52 14,60 M41,34 C46,42 47,52 46,60"/>
+<path class="l1" d="M18,46 C12,60 11,80 12,104 C22,108 38,108 48,104 C49,80 48,60 42,46 Z"/>
+<path class="l3" d="M15,88 C22,91 38,91 45,88"/>
+<path class="l2" d="M12,104 L48,104 L52,118 L8,118 Z"/>
+</symbol>
+<symbol id="sym_card" viewBox="0 0 100 100">
+<path class="l1 f-card" d="M28,6.4 L72,5.6 L72,88.4 L28,89.2 Z"/>
+<path class="l3 miter" d="M36,20 L64,20 M36,30 L60,30"/>
+<path class="l2" style="stroke:var(--zhu)" d="M36,56 C46,54.6 52,57.2 62,55.6"/>
+</symbol>
+<symbol id="sym_stick" viewBox="0 0 100 100">
+<path class="l1 f-card" d="M34,4.4 L66,3.6 L66,94.4 L34,95.2 Z"/>
+<path class="l3 miter" d="M42,16 L58,16"/>
+<path class="l2" d="M50,26 L50,84"/>
+<path class="l3" d="M44,34 L56,34 M44,46 L56,46"/>
+</symbol>
+</defs></svg>
+<script type="application/json" id="cite-data">
+{
+ "base":"原著\\红楼梦_程甲本系统_PG24264_全本120回.txt",
+ "chap":"第四十回",
+ "q1":{"line":"L9961-L9966","note":"八人八姿","text":"上上下下都哈哈的大笑起來．史湘云撐不住，一口飯都噴了出來，林黛玉笑岔了气，伏著桌子噯喲，寶玉早滾到賈母怀里，賈母笑的摟著寶玉叫\"心肝\"，王夫人笑的用手指著鳳姐儿，只說不出話來，薛姨媽也撐不住，口里茶噴了探春一裙子，探春手里的飯碗都合在迎春身上，惜春离了坐位，拉著他奶母叫揉一揉腸子．"},
+ "q2":{"line":"L9941","note":"箸一 · 烏木三鑲銀","text":"一把烏木三鑲銀箸"},
+ "q3":{"line":"L9952-L9954","note":"箸二 · 單拿与劉姥姥","text":"原是鳳姐和鴛鴦商議定了，單拿一雙老年四楞象牙鑲金的筷子与劉姥姥．"},
+ "q4":{"line":"L9982","note":"箸三 · 也照樣換上","text":"也照樣換上一雙烏木鑲銀的"},
+ "q5":{"line":"L9954-L9955","note":"劉姥姥語一","text":"這叉爬子比俺那里鐵掀還沉"},
+ "q6":{"line":"L9983","note":"劉姥姥語二","text":"去了金的，又是銀的，到底不及俺們那個伏手"},
+ "q7":{"line":"L9935-L9936","note":"這一次的用意","text":"咱們今儿就拿他取個笑儿。"},
+ "q8":{"line":"L10162","note":"牙牌令 · 燒毛毛虫","text":"大火燒了毛毛虫"},
+ "q9":{"line":"L10166","note":"牙牌令 · 大倭瓜","text":"花儿落了結個大倭瓜"},
+ "q10":{"line":"L9941","note":"席上通用","text":"按席擺下"}
+}
+</script>
+<script>
+"use strict";
+(function(){
+
+/* ══ 0. 存檔：與前三幕同一個桶，鍵名不動 ═══════════════════════════════
+   本幕（第四幕）寫：act=4，往 done 追加 "act4"，《校勘記》追加本幕條目，
+   f 與前三幕的 f **合併**（前三幕的旗一個不動）。
+   本幕自己的物件欄／已讀／相機另寫 inv4 / read4 / cam4 ——
+   前三幕的 inv / read / cam / inv2 / read2 / cam2 / inv3 / read3 / cam3 原樣留著，只加不改。 */
+var SAVE_KEY = "honglou.rustylake.v1";
+var NOTES_KEY = "honglou.rustylake.v1.notes";
+var ACT_NO = 4, ACT_ID = "act4";
+
+/* ══ 0b. 簡繁切換（hl.lang.v1）—— 沿用前三幕的 OpenCC 映射，逐字照搬 ══
+   下表 2972 對，取自 OpenCC（tw→cn）。存成「繁字串 + 簡字串」兩條等長字符串；
+   長度不符即整表作廢 —— 寧可不轉，也不轉錯。
+   原文逐節點另存，切回繁體是逐字還原；不做簡→繁反推（多對一，反推必出錯）。*/
+var LANG_KEY = "hl.lang.v1";
+var LANG_NOTE = "原文為繁體，此處為簡體轉寫。";
+var LT = "㑯㑳㑶㓨㘚㜄㜏㠏㥮㩜㩳㩵䁻䃮䊷䋙䋚䋹䋻䍦䎱䙡䜀䝼䥇䥑䥱䦛䦟䯀䰾䱷䱽䲁䲘䴉丟並么乾亂亙亞佇佈佔併來侖侶侷俁係俔俠俥俬倀倆倈倉個們倖倫倲偉偑側偵偽傌傑傖傘備傢傭傯傳傴債傷傾僂僅僉僑僕僞僥僨僱價儀儁儂億儈儉儎儐儔儕儘償優儲儷儸儺儻儼兇兌兒兗內兩冊冑冪凈凍凜凱別刪剄則剋剎剗剛剝剮剴創剷劃劄劇劉劊劌劍劏劑劚勁動務勛勝勞勢勩勱勳勵勸勻匭匯匱區協卹卻卽厙厠厤厭厲厴參叄叢吒吳吶呂咼員唄唸問啓啞啟啢喎喚喪喫喬單喲嗆嗇嗊嗎嗚嗩嗶嘆嘍嘓嘔嘖嘗嘜嘩嘮嘯嘰嘵嘸嘽噁噓噚噝噠噥噦噯噲噴噸噹嚀嚇嚌嚐嚕嚙嚥嚦嚨嚮嚲嚳嚴嚶囀囁囂囅囈囉囌囑囪圇國圍園圓圖團垻埡埰執堅堊堖堝堯報場塊塋塏塒塗塚塢塤塵塹墊墜墮墰墳墶墻墾壇壋壎壓壘壙壚壜壞壟壠壢壩壪壯壺壼壽夠夢夥夾奐奧奩奪奬奮奼妝姍姦娛婁婦婭媧媯媰媼媽嫋嫗嫵嫺嫻嫿嬀嬃嬈嬋嬌嬙嬡嬤嬪嬰嬸孃孋孌孫學孿宮寀寢實寧審寫寬寵寶將專尋對導尷屆屍屓屜屢層屨屬岡峯峴島峽崍崑崗崙崢崬嵐嵗嵾嶁嶄嶇嶔嶗嶠嶢嶧嶨嶮嶸嶺嶼嶽巋巒巔巖巰巹帥師帳帶幀幃幓幗幘幟幣幫幬幷幹幾庫廁廂廄廈廎廕廚廝廟廠廡廢廣廩廬廳弒弔弳張強彆彈彌彎彔彙彠彥彫彲彿後徑從徠復徵徹恆恥悅悞悵悶悽惡惱惲惻愛愜愨愴愷愾慄態慍慘慚慟慣慤慪慫慮慳慶慺慼慾憂憊憐憑憒憖憚憤憫憮憲憶懇應懌懍懞懟懣懤懨懲懶懷懸懺懼懾戀戇戔戧戩戰戱戲戶扞拋拚挩挱挾捨捫捱捲掃掄掆掗掙掛採揀揚換揮揯損搖搗搧搵搶摑摜摟摯摳摶摺摻撈撏撐撓撝撟撣撥撫撲撳撻撾撿擁擄擇擊擋擓擔據擠擡擣擬擯擰擱擲擴擷擺擻擼擽擾攄攆攏攔攖攙攛攜攝攢攣攤攪攬敎敓敗敘敵數斂斃斆斕斬斷於旂旣昇時晉晝暈暉暘暢暫曄曆曇曉曏曖曠曨曬書會朧朮東枴柵柺査桿梔梘條梟梲棄棊棖棗棟棡棧棲棶椏椲楊楓楨業極榘榦榪榮榲榿構槍槓槤槧槨槮槳槶槼樁樂樅樑樓標樞樢樣樧樫樳樸樹樺樿橈橋機橢橫檁檉檔檜檟檢檣檮檯檳檸檻櫃櫓櫚櫛櫝櫞櫟櫥櫧櫨櫪櫫櫬櫱櫳櫸櫻欄欅權欏欒欖欞欽歎歐歟歡歲歷歸歿殘殞殤殨殫殭殮殯殰殲殺殻殼毀毆毿氂氈氌氣氫氬氳氾汎汙決沒沖況泝洩洶浹涇涗涼淒淚淥淨淩淪淵淶淺渙減渢渦測渾湊湞湧湯溈準溝溫溮溳溼滄滅滌滎滙滬滯滲滷滸滻滾滿漁漊漚漢漣漬漲漵漸漿潀潁潑潔潙潚潛潤潯潰潷潿澀澆澇澐澗澠澤澦澩澮澱澾濁濃濄濕濘濚濛濜濟濤濧濫濰濱濺濼濾瀂瀅瀆瀇瀉瀋瀏瀕瀘瀝瀟瀠瀦瀧瀨瀰瀲瀾灃灄灑灕灘灝灡灣灤灧灩災為烏烴無煉煒煙煢煥煩煬煱熅熒熗熱熲熾燁燈燉燒燙燜營燦燬燭燴燶燻燼燾爍爐爛爭爲爺爾牀牆牘牴牽犖犛犢犧狀狹狽猙猶猻獁獃獄獅獎獨獪獫獮獰獱獲獵獷獸獺獻獼玀現琱琺琿瑋瑒瑣瑤瑩瑪瑲璉璡璣璦璫璯環璵璸璽璿瓊瓏瓔瓚甌甕產産畝畢畫異畵當疇疊痙痠痺痾瘂瘋瘍瘓瘞瘡瘧瘮瘲瘺瘻療癆癇癉癒癘癟癡癢癤癥癧癩癬癭癮癰癱癲發皁皚皰皸皺盃盜盞盡監盤盧盪眞眥眾睏睜睞睪瞘瞜瞞瞶瞼矇矓矚矯硃硜硤硨硯碕碩碭碸確碼碽磑磚磠磣磧磯磽磾礄礎礙礦礪礫礬礱祕祿禍禎禕禡禦禪禮禰禱禿秈稅稈稏稜稟種稱穀穇穌積穎穠穡穢穩穫穭窩窪窮窯窵窶窺竄竅竇竈竊竪競筆筍筧筴箇箋箏箚節範築篋篔篠篤篩篳簀簍簑簞簡簣簫簷簹簽簾籃籌籔籙籛籜籟籠籤籩籪籬籮籲粵糉糝糞糧糰糲糴糶糹糾紀紂約紅紆紇紈紉紋納紐紓純紕紖紗紘紙級紛紜紝紡紬紮細紱紲紳紵紹紺紼紿絀終絃組絅絆絎結絕絛絝絞絡絢給絨絰統絲絳絶絹綁綃綆綈綉綌綏綐綑經綜綞綠綢綣綫綬維綯綰綱網綳綴綵綸綹綺綻綽綾綿緄緇緊緋緑緒緓緔緗緘緙線緝緞締緡緣緦編緩緬緯緱緲練緶緹緻緼縈縉縊縋縐縑縕縗縛縝縞縟縣縧縫縭縮縱縲縳縴縵縶縷縹總績繃繅繆繒織繕繚繞繡繢繩繪繫繭繮繯繰繳繸繹繼繽繾繿纇纈纊續纍纏纓纔纖纘纜缽罃罈罌罎罰罵罷羅羆羈羋羣羥羨義羶習翫翬翹翽耬耮聖聞聯聰聲聳聵聶職聹聽聾肅脅脈脛脣脩脫脹腎腖腡腦腫腳腸膃膕膚膞膠膩膽膾膿臉臍臏臘臚臟臠臢臥臨臺與興舉舊舖舘艙艤艦艫艱艷芻苧茲荊莊莖莢莧華菴菸萇萊萬萴萵葉葒著葤葦葯葷蒐蒓蒔蒕蒞蒼蓀蓆蓋蓮蓯蓴蓽蔔蔘蔞蔣蔥蔦蔭蕁蕆蕎蕒蕓蕕蕘蕢蕩蕪蕭蕷薀薈薊薌薑薔薘薟薦薩薳薴薵薹薺藍藎藝藥藪藭藴藶藹藺蘀蘄蘆蘇蘊蘋蘚蘞蘢蘭蘺蘿虆處虛虜號虧虯蛺蛻蜆蝕蝟蝦蝨蝸螄螞螢螮螻螿蟄蟈蟎蟣蟬蟯蟲蟶蟻蠁蠅蠆蠍蠐蠑蠔蠟蠣蠨蠱蠶蠻衆衊術衕衚衛衝袞袷裊裏補裝裡製複褌褘褲褳褸褻襇襉襏襖襝襠襤襪襬襯襲襴覈見覎規覓視覘覡覥覦親覬覯覲覷覺覽覿觀觴觶觸訁訂訃計訊訌討訐訒訓訕訖託記訛訝訟訢訣訥訩訪設許訴訶診註証詁詆詎詐詒詔評詖詗詘詛詞詠詡詢詣試詩詫詬詭詮詰話該詳詵詼詿誄誅誆誇誌認誑誒誕誘誚語誠誡誣誤誥誦誨說説誰課誶誹誼誾調諂諄談諉請諍諏諑諒論諗諛諜諝諞諡諢諤諦諧諫諭諮諱諳諶諷諸諺諼諾謀謁謂謄謅謊謎謐謔謖謗謙謚講謝謠謡謨謫謬謭謳謹謾譁證譎譏譖識譙譚譜譟譫譭譯議譴護譸譽譾讀讅變讋讌讎讒讓讕讖讚讜讞谿豈豎豐豔豬豶貍貓貙貝貞貟負財貢貧貨販貪貫責貯貰貲貳貴貶買貸貺費貼貽貿賀賁賂賃賄賅資賈賊賑賒賓賕賙賚賜賞賠賡賢賣賤賦賧質賫賬賭賰賴賵賺賻購賽賾贄贅贇贈贊贋贍贏贐贓贔贖贗贛贜赬趕趙趨趲跡踐踰踴蹌蹕蹟蹠蹣蹤蹺躂躉躊躋躍躎躑躒躓躕躚躡躥躦躪軀車軋軌軍軑軒軔軛軟軤軫軲軸軹軺軻軼軾較輅輇輈載輊輒輓輔輕輛輜輝輞輟輥輦輩輪輬輯輳輸輻輼輾輿轀轂轄轅轆轉轍轎轔轟轡轢轤辦辭辮辯農迴逕這連週進遊運過達違遙遜遞遠遡適遲遶遷選遺遼邁還邇邊邏邐郟郵鄆鄉鄒鄔鄖鄧鄭鄰鄲鄴鄶鄺酇酈醃醖醜醞醟醣醫醬醱釀釁釃釅釋釐釒釓釔釕釗釘釙針釣釤釦釧釩釵釷釹釺釾鈀鈁鈃鈄鈅鈈鈉鈍鈎鈐鈑鈒鈔鈕鈞鈡鈣鈥鈦鈧鈮鈰鈳鈴鈷鈸鈹鈺鈽鈾鈿鉀鉅鉆鉈鉉鉋鉍鉑鉕鉗鉚鉛鉞鉢鉤鉦鉬鉭鉳鉶鉸鉺鉻鉿銀銃銅銍銑銓銖銘銚銛銜銠銣銥銦銨銩銪銫銬銱銳銷銹銻銼鋁鋃鋅鋇鋌鋏鋒鋙鋝鋟鋣鋤鋥鋦鋨鋩鋪鋭鋮鋯鋰鋱鋶鋸鋼錁錄錆錇錈錏錐錒錕錘錙錚錛錟錠錡錢錦錨錩錫錮錯録錳錶錸錼鍀鍁鍃鍅鍆鍇鍈鍊鍋鍍鍔鍘鍚鍛鍠鍤鍥鍩鍬鍰鍵鍶鍺鍼鍾鎂鎄鎇鎊鎌鎔鎖鎘鎚鎛鎡鎢鎣鎦鎧鎩鎪鎬鎭鎮鎰鎲鎳鎵鎶鎸鎿鏃鏇鏈鏌鏍鏐鏑鏗鏘鏜鏝鏞鏟鏡鏢鏤鏨鏰鏵鏷鏹鏺鏽鐃鐋鐐鐒鐓鐔鐘鐙鐝鐠鐥鐦鐧鐨鐫鐮鐯鐲鐳鐵鐶鐸鐺鐿鑄鑊鑌鑑鑒鑔鑕鑞鑠鑣鑥鑭鑰鑱鑲鑷鑹鑼鑽鑾鑿钁钂長門閂閃閆閈閉開閌閎閏閑閒間閔閘閡閣閤閥閨閩閫閬閭閱閲閶閹閻閼閽閾閿闃闆闇闈闊闋闌闍闐闒闓闔闕闖關闞闠闡闢闤闥陘陝陞陣陰陳陸陽隉隊階隕際隨險隯隱隴隸隻雋雖雙雛雜雞離難雲電霑霢霧霽靂靄靆靈靉靚靜靝靦靨鞏鞝鞦鞽韁韃韆韉韋韌韍韓韙韜韝韞韻響頁頂頃項順頇須頊頌頎頏預頑頒頓頗領頜頡頤頦頭頮頰頲頴頷頸頹頻頽顆題額顎顏顒顓顔願顙顛類顢顥顧顫顬顯顰顱顳顴風颭颮颯颱颳颶颸颺颻颼飀飄飆飈飛飠飢飣飥飩飪飫飭飯飱飲飴飼飽飾飿餃餄餅餈餉養餌餎餏餑餒餓餕餖餘餚餛餜餞餡館餬餱餳餵餶餷餺餼餾餿饁饃饅饈饉饊饋饌饑饒饗饜饞饢馬馭馮馱馳馴馹駁駐駑駒駔駕駘駙駛駝駟駡駢駭駰駱駸駿騁騂騅騌騍騎騏騖騙騤騧騫騭騮騰騶騷騸騾驀驁驂驃驄驅驊驌驍驏驕驗驚驛驟驢驤驥驦驪驫骯髏髒體髕髖髮鬆鬍鬚鬢鬥鬧鬨鬩鬮鬱鬹魎魘魚魛魢魨魯魴魷魺鮁鮃鮊鮋鮍鮎鮐鮑鮒鮓鮚鮜鮝鮞鮣鮦鮪鮫鮭鮮鮳鮶鮺鯀鯁鯇鯉鯊鯒鯔鯕鯖鯗鯛鯝鯡鯢鯤鯧鯨鯪鯫鯰鯴鯷鯽鯿鰁鰂鰃鰆鰈鰉鰌鰍鰏鰐鰒鰓鰛鰜鰟鰠鰣鰥鰧鰨鰩鰭鰮鰱鰲鰳鰵鰷鰹鰺鰻鰼鰾鱂鱅鱈鱉鱒鱔鱖鱗鱘鱝鱟鱠鱣鱤鱧鱨鱭鱯鱷鱸鱺鳥鳧鳩鳬鳲鳳鳴鳶鳾鴆鴇鴉鴒鴕鴛鴝鴞鴟鴣鴦鴨鴯鴰鴴鴷鴻鴿鵁鵂鵃鵐鵑鵒鵓鵜鵝鵠鵡鵪鵬鵮鵯鵰鵲鵷鵾鶄鶇鶉鶊鶓鶖鶘鶚鶡鶥鶩鶪鶬鶯鶲鶴鶹鶺鶻鶼鶿鷀鷁鷂鷄鷉鷊鷓鷖鷗鷙鷚鷥鷦鷫鷯鷲鷳鷴鷸鷹鷺鷽鸂鸇鸊鸌鸏鸕鸘鸚鸛鸝鸞鹵鹹鹺鹼鹽麗麥麩麪麫麯麴麵麼麽黃黌點黨黲黴黶黷黽黿鼂鼉鼕鼴齊齋齎齏齒齔齕齗齙齜齟齠齡齣齦齧齪齬齲齶齷龍龎龐龑龔龕龜鿁鿓";
+var LS = "㑔㑇㐹刾㘎㚯㛣㟆㤘㨫㧐擜䀥鿎䌶䌺䌻䌿䌾䍠䎬䙌䜧䞍䦂鿏䥾䦶䦷䯅鲃䲣䲝鳚鳤鹮丢并幺干乱亘亚伫布占并来仑侣局俣系伣侠伡私伥俩俫仓个们幸伦㑈伟㐽侧侦伪㐷杰伧伞备家佣偬传伛债伤倾偻仅佥侨仆伪侥偾雇价仪俊侬亿侩俭傤傧俦侪尽偿优储俪㑩傩傥俨凶兑儿兖内两册胄幂净冻凛凯别删刭则克刹刬刚剥剐剀创铲划札剧刘刽刿剑㓥剂㔉劲动务勋胜劳势勚劢勋励劝匀匦汇匮区协恤却即厍厕历厌厉厣参叁丛咤吴呐吕呙员呗念问启哑启唡㖞唤丧吃乔单哟呛啬唝吗呜唢哔叹喽啯呕啧尝唛哗唠啸叽哓呒啴恶嘘㖊咝哒哝哕嗳哙喷吨当咛吓哜尝噜啮咽呖咙向亸喾严嘤啭嗫嚣冁呓啰苏嘱囱囵国围园圆图团坝垭采执坚垩垴埚尧报场块茔垲埘涂冢坞埙尘堑垫坠堕坛坟垯墙垦坛垱埙压垒圹垆坛坏垄垅坜坝塆壮壶壸寿够梦伙夹奂奥奁夺奖奋姹妆姗奸娱娄妇娅娲妫㛀媪妈袅妪妩娴娴婳妫媭娆婵娇嫱嫒嬷嫔婴婶娘㛤娈孙学孪宫采寝实宁审写宽宠宝将专寻对导尴届尸屃屉屡层屦属冈峰岘岛峡崃昆岗仑峥岽岚岁㟥嵝崭岖嵚崂峤峣峄峃崄嵘岭屿岳岿峦巅岩巯卺帅师帐带帧帏㡎帼帻帜币帮帱并干几库厕厢厩厦庼荫厨厮庙厂庑废广廪庐厅弑吊弪张强别弹弥弯录汇彟彦雕彨佛后径从徕复征彻恒耻悦悮怅闷凄恶恼恽恻爱惬悫怆恺忾栗态愠惨惭恸惯悫怄怂虑悭庆㥪戚欲忧惫怜凭愦慭惮愤悯怃宪忆恳应怿懔蒙怼懑㤽恹惩懒怀悬忏惧慑恋戆戋戗戬战戯戏户捍抛拼捝挲挟舍扪挨卷扫抡㧏挜挣挂采拣扬换挥搄损摇捣扇揾抢掴掼搂挚抠抟折掺捞挦撑挠㧑挢掸拨抚扑揿挞挝捡拥掳择击挡㧟担据挤抬捣拟摈拧搁掷扩撷摆擞撸㧰扰摅撵拢拦撄搀撺携摄攒挛摊搅揽教敚败叙敌数敛毙敩斓斩断于旗既升时晋昼晕晖旸畅暂晔历昙晓向暧旷昽晒书会胧术东拐栅拐查杆栀枧条枭棁弃棋枨枣栋㭎栈栖梾桠㭏杨枫桢业极矩干杩荣榅桤构枪杠梿椠椁椮桨椢椝桩乐枞梁楼标枢㭤样榝㭴桪朴树桦椫桡桥机椭横檩柽档桧槚检樯梼台槟柠槛柜橹榈栉椟橼栎橱槠栌枥橥榇蘖栊榉樱栏榉权椤栾榄棂钦叹欧欤欢岁历归殁残殒殇㱮殚僵殓殡㱩歼杀壳壳毁殴毵牦毡氇气氢氩氲泛泛污决没冲况溯泄汹浃泾涚凉凄泪渌净凌沦渊涞浅涣减沨涡测浑凑浈涌汤沩准沟温浉涢湿沧灭涤荥汇沪滞渗卤浒浐滚满渔溇沤汉涟渍涨溆渐浆潨颍泼洁沩㴋潜润浔溃滗涠涩浇涝沄涧渑泽滪泶浍淀㳠浊浓㳡湿泞溁蒙浕济涛㳔滥潍滨溅泺滤澛滢渎㲿泻沈浏濒泸沥潇潆潴泷濑弥潋澜沣滠洒漓滩灏㳕湾滦滟滟灾为乌烃无炼炜烟茕焕烦炀㶽煴荧炝热颎炽烨灯炖烧烫焖营灿毁烛烩㶶熏烬焘烁炉烂争为爷尔床墙牍抵牵荦牦犊牺状狭狈狰犹狲犸呆狱狮奖独狯猃狝狞㺍获猎犷兽獭献猕猡现雕珐珲玮玚琐瑶莹玛玱琏琎玑瑷珰㻅环玙瑸玺璇琼珑璎瓒瓯瓮产产亩毕画异画当畴叠痉酸痹疴痖疯疡痪瘗疮疟瘆疭瘘瘘疗痨痫瘅愈疠瘪痴痒疖症疬癞癣瘿瘾痈瘫癫发皂皑疱皲皱杯盗盏尽监盘卢荡真眦众困睁睐睾眍䁖瞒瞆睑蒙眬瞩矫朱硁硖砗砚埼硕砀砜确码䂵硙砖硵碜碛矶硗䃅硚础碍矿砺砾矾砻秘禄祸祯祎祃御禅礼祢祷秃籼税秆䅉棱禀种称谷䅟稣积颖秾穑秽稳获穞窝洼穷窑窎窭窥窜窍窦灶窃竖竞笔笋笕䇲个笺筝札节范筑箧筼筿笃筛筚箦篓蓑箪简篑箫檐筜签帘篮筹䉤箓篯箨籁笼签笾簖篱箩吁粤粽糁粪粮团粝籴粜纟纠纪纣约红纡纥纨纫纹纳纽纾纯纰纼纱纮纸级纷纭纴纺䌷扎细绂绁绅纻绍绀绋绐绌终弦组䌹绊绗结绝绦绔绞络绚给绒绖统丝绛绝绢绑绡绠绨绣绤绥䌼捆经综缍绿绸绻线绶维绹绾纲网绷缀彩纶绺绮绽绰绫绵绲缁紧绯绿绪绬绱缃缄缂线缉缎缔缗缘缌编缓缅纬缑缈练缏缇致缊萦缙缢缒绉缣缊缞缚缜缟缛县绦缝缡缩纵缧䌸纤缦絷缕缥总绩绷缫缪缯织缮缭绕绣缋绳绘系茧缰缳缲缴䍁绎继缤缱䍀颣缬纩续累缠缨才纤缵缆钵䓨坛罂坛罚骂罢罗罴羁芈群羟羡义膻习玩翚翘翙耧耢圣闻联聪声耸聩聂职聍听聋肃胁脉胫唇修脱胀肾胨脶脑肿脚肠腽腘肤䏝胶腻胆脍脓脸脐膑腊胪脏脔臜卧临台与兴举旧铺馆舱舣舰舻艰艳刍苎兹荆庄茎荚苋华庵烟苌莱万荝莴叶荭着荮苇药荤搜莼莳蒀莅苍荪席盖莲苁莼荜卜参蒌蒋葱茑荫荨蒇荞荬芸莸荛蒉荡芜萧蓣蕰荟蓟芗姜蔷荙莶荐萨䓕苧䓓苔荠蓝荩艺药薮䓖蕴苈蔼蔺萚蕲芦苏蕴苹藓蔹茏兰蓠萝蔂处虚虏号亏虬蛱蜕蚬蚀猬虾虱蜗蛳蚂萤䗖蝼螀蛰蝈螨虮蝉蛲虫蛏蚁蚃蝇虿蝎蛴蝾蚝蜡蛎蟏蛊蚕蛮众蔑术同胡卫冲衮夹袅里补装里制复裈袆裤裢褛亵裥裥袯袄裣裆褴袜摆衬袭襕核见觃规觅视觇觋觍觎亲觊觏觐觑觉览觌观觞觯触讠订讣计讯讧讨讦讱训讪讫托记讹讶讼䜣诀讷讻访设许诉诃诊注证诂诋讵诈诒诏评诐诇诎诅词咏诩询诣试诗诧诟诡诠诘话该详诜诙诖诔诛诓夸志认诳诶诞诱诮语诚诫诬误诰诵诲说说谁课谇诽谊訚调谄谆谈诿请诤诹诼谅论谂谀谍谞谝谥诨谔谛谐谏谕咨讳谙谌讽诸谚谖诺谋谒谓誊诌谎谜谧谑谡谤谦谥讲谢谣谣谟谪谬谫讴谨谩哗证谲讥谮识谯谭谱噪谵毁译议谴护诪誉谫读谉变詟䜩雠谗让谰谶赞谠谳溪岂竖丰艳猪豮狸猫䝙贝贞贠负财贡贫货贩贪贯责贮贳赀贰贵贬买贷贶费贴贻贸贺贲赂赁贿赅资贾贼赈赊宾赇赒赉赐赏赔赓贤卖贱赋赕质赍账赌䞐赖赗赚赙购赛赜贽赘赟赠赞赝赡赢赆赃赑赎赝赣赃赪赶赵趋趱迹践逾踊跄跸迹跖蹒踪跷跶趸踌跻跃䟢踯跞踬蹰跹蹑蹿躜躏躯车轧轨军轪轩轫轭软轷轸轱轴轵轺轲轶轼较辂辁辀载轾辄挽辅轻辆辎辉辋辍辊辇辈轮辌辑辏输辐辒辗舆辒毂辖辕辘转辙轿辚轰辔轹轳办辞辫辩农回径这连周进游运过达违遥逊递远溯适迟绕迁选遗辽迈还迩边逻逦郏邮郓乡邹邬郧邓郑邻郸邺郐邝酂郦腌酝丑酝蒏糖医酱酦酿衅酾酽释厘钅钆钇钌钊钉钋针钓钐扣钏钒钗钍钕钎䥺钯钫钘钭钥钚钠钝钩钤钣钑钞钮钧钟钙钬钛钪铌铈钶铃钴钹铍钰钸铀钿钾巨钻铊铉铇铋铂钷钳铆铅钺钵钩钲钼钽锫铏铰铒铬铪银铳铜铚铣铨铢铭铫铦衔铑铷铱铟铵铥铕铯铐铞锐销锈锑锉铝锒锌钡铤铗锋铻锊锓铘锄锃锔锇铓铺锐铖锆锂铽锍锯钢锞录锖锫锩铔锥锕锟锤锱铮锛锬锭锜钱锦锚锠锡锢错录锰表铼镎锝锨锪钫钔锴锳炼锅镀锷铡钖锻锽锸锲锘锹锾键锶锗针钟镁锿镅镑镰镕锁镉锤镈镃钨蓥镏铠铩锼镐镇镇镒镋镍镓鿔镌镎镞旋链镆镙镠镝铿锵镗镘镛铲镜镖镂錾镚铧镤镪䥽锈铙铴镣铹镦镡钟镫镢镨䦅锎锏镄镌镰䦃镯镭铁镮铎铛镱铸镬镔鉴鉴镲锧镴铄镳镥镧钥镵镶镊镩锣钻銮凿镢镋长门闩闪闫闬闭开闶闳闰闲闲间闵闸阂阁合阀闺闽阃阆闾阅阅阊阉阎阏阍阈阌阒板暗闱阔阕阑阇阗阘闿阖阙闯关阚阓阐辟阛闼陉陕升阵阴陈陆阳陧队阶陨际随险陦隐陇隶只隽虽双雏杂鸡离难云电沾霡雾霁雳霭叇灵叆靓静靔腼靥巩绱秋鞒缰鞑千鞯韦韧韨韩韪韬鞲韫韵响页顶顷项顺顸须顼颂颀颃预顽颁顿颇领颌颉颐颏头颒颊颋颕颔颈颓频颓颗题额腭颜颙颛颜愿颡颠类颟颢顾颤颥显颦颅颞颧风飐飑飒台刮飓飔飏飖飕飗飘飙飚飞饣饥饤饦饨饪饫饬饭飧饮饴饲饱饰饳饺饸饼糍饷养饵饹饻饽馁饿馂饾余肴馄馃饯馅馆糊糇饧喂馉馇馎饩馏馊馌馍馒馐馑馓馈馔饥饶飨餍馋馕马驭冯驮驰驯驲驳驻驽驹驵驾骀驸驶驼驷骂骈骇骃骆骎骏骋骍骓骔骒骑骐骛骗骙䯄骞骘骝腾驺骚骟骡蓦骜骖骠骢驱骅骕骁骣骄验惊驿骤驴骧骥骦骊骉肮髅脏体髌髋发松胡须鬓斗闹哄阋阄郁鬶魉魇鱼鱽鱾鲀鲁鲂鱿鲄鲅鲆鲌鲉鲏鲇鲐鲍鲋鲊鲒鲘鲞鲕䲟鲖鲔鲛鲑鲜鲓鲪鲝鲧鲠鲩鲤鲨鲬鲻鲯鲭鲞鲷鲴鲱鲵鲲鲳鲸鲮鲰鲇鲺鳀鲫鳊鳈鲗鳂䲠鲽鳇䲡鳅鲾鳄鳆鳃鳁鳒鳑鳋鲥鳏䲢鳎鳐鳍鳁鲢鳌鳓鳘鲦鲣鲹鳗鳛鳔鳉鳙鳕鳖鳟鳝鳜鳞鲟鲼鲎鲙鳣鳡鳢鲿鲚鳠鳄鲈鲡鸟凫鸠凫鸤凤鸣鸢䴓鸩鸨鸦鸰鸵鸳鸲鸮鸱鸪鸯鸭鸸鸹鸻䴕鸿鸽䴔鸺鸼鹀鹃鹆鹁鹈鹅鹄鹉鹌鹏鹐鹎雕鹊鹓鹍䴖鸫鹑鹒鹋鹙鹕鹗鹖鹛鹜䴗鸧莺鹟鹤鹠鹡鹘鹣鹚鹚鹢鹞鸡䴘鹝鹧鹥鸥鸷鹨鸶鹪鹔鹩鹫鹇鹇鹬鹰鹭鸴㶉鹯䴙鹱鹲鸬鹴鹦鹳鹂鸾卤咸鹾碱盐丽麦麸面面曲曲面么么黄黉点党黪霉黡黩黾鼋鼌鼍冬鼹齐斋赍齑齿龀龁龂龅龇龃龆龄出龈啮龊龉龋腭龌龙厐庞䶮龚龛龟䜤鿒";
+
+var T2S = (function(){
+  var m = {}, i;
+  if(LT.length !== LS.length || LT.length !== 2972) return m;
+  for(i=0;i<LT.length;i++) m[LT.charAt(i)] = LS.charAt(i);
+  return m;
+})();
+var LANG = "t";
+try{ LANG = (localStorage.getItem(LANG_KEY) === "s") ? "s" : "t"; }catch(e){ LANG = "t"; }
+function toSimp(s){
+  var out = "", i, c;
+  for(i=0;i<s.length;i++){ c = s.charAt(i); out += (T2S[c] || c); }
+  return out;
+}
+var ORIG = (typeof WeakMap === "function") ? new WeakMap() : null;
+function relang(){
+  if(!ORIG || typeof document.createTreeWalker !== "function") return;
+  var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode: function(n){
+      var p = n.parentNode;
+      if(!p) return NodeFilter.FILTER_REJECT;
+      var tag = p.nodeName;
+      if(tag === "SCRIPT" || tag === "STYLE" || tag === "TITLE" || tag === "BUTTON") return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  var n, cur, orig, want;
+  while((n = walker.nextNode())){
+    cur = n.nodeValue;
+    if(!cur) continue;
+    orig = ORIG.get(n);
+    if(orig === undefined){ orig = cur; ORIG.set(n, orig); }
+    else if(cur !== orig && cur !== toSimp(orig)){ orig = cur; ORIG.set(n, orig); }
+    want = (LANG === "s") ? toSimp(orig) : orig;
+    if(cur !== want) n.nodeValue = want;
+  }
+}
+function setLang(v, quiet){
+  LANG = (v === "s") ? "s" : "t";
+  try{ localStorage.setItem(LANG_KEY, LANG); }catch(e){}
+  document.documentElement.setAttribute("lang", LANG === "s" ? "zh-Hans" : "zh-Hant");
+  var b = document.getElementById("langbtn");
+  if(b){
+    b.textContent = (LANG === "s") ? "切换繁体" : "切換簡體";
+    b.setAttribute("data-lang", LANG);
+    b.setAttribute("aria-label", (LANG === "s") ? "切换繁体（现为简体）" : "切換簡體（現為繁體）");
+    b.setAttribute("title", (LANG === "s") ? "現為簡體 · 點一下切回繁體" : "現為繁體 · 點一下切換簡體");
+  }
+  relang();
+  syncLangNotes();
+}
+function syncLangNotes(){
+  var ns = document.querySelectorAll(".langnote"), i, on = (LANG === "s");
+  for(i=0;i<ns.length;i++){ ns[i].style.display = on ? "" : "none"; }
+}
+var langRAF = null;
+function relangSoon(){
+  if(langRAF) return;
+  langRAF = requestAnimationFrame(function(){ langRAF = null; relang(); });
+}
+var LANG_MO = (typeof MutationObserver === "function") ? new MutationObserver(relangSoon) : null;
+if(LANG_MO){ LANG_MO.observe(document.body, { subtree:true, childList:true, characterData:true }); }
+
+/* ══ 1. 引文（逐字取自工作底本，見《引文溯源表》第四幕一節）════════════════
+   底本＝原著\红楼梦_程甲本系统_PG24264_全本120回.txt（程甲本系統，非權威）。
+   下面的字串由底本第四十回（第 9,801–10,167 行）相應行連行而成 ——
+   正文按 35 字硬折行，所以先 join 再斷句，其餘一字不動。
+   字形照抄：本回是「气」（不是「氣」）、「虫」（不是「蟲」）、「离」（不是「離」）、
+   「云」（史湘云）、「儿」（鳳姐儿 / 取個笑儿），一律不規範化、不轉繁。 */
+var CITE = (function(){
+  try{ return JSON.parse(document.getElementById("cite-data").textContent); }
+  catch(e){ return {}; }
+})();
+
+/* ══ 2. 上一幕交下來的（讀不到就照實說）═══════════════════════════════ */
+var PREV = (function(){
+  try{
+    var raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return null;
+    var o = JSON.parse(raw);
+    if(!o || !o.f) return null;
+    return o;
+  }catch(e){ return null; }
+})();
+function prevHas(k){ return !!(PREV && PREV.f && PREV.f[k]); }
+function prevRead(k){ return !!(PREV && PREV.read && PREV.read.indexOf(k) >= 0); }
+function prevDone(id){ return !!(PREV && PREV.done && PREV.done.indexOf && PREV.done.indexOf(id) >= 0); }
+
+/* ══ 3. flags —— 本幕的 f_* 全部新起（f_a4_ 前綴），與前三幕一個不撞 ═════ */
+var FLAG_KEYS = [
+  "f_a4_seen","f_a4_bridge_read","f_a4_rule_read","f_a4_src_read",
+  "f_a4_seal_pose","f_a4_seal_chop","f_a4_book_seen","f_a4_done"
+];
+var F = {}, INV = [], READ = [], SEL = null, CAM = "room", MIS = 0;
+var LOOK = {};    /* 看過名帖的人 */
+var POSE = {};    /* 姿框序 i -> 人 k（鏈①） */
+var CHOP = {};    /* 去處 k -> 箸 kind（鏈② 上半） */
+var INTENT = null;/* 用意（鏈② 下半） */
+function allFlagKeys(){
+  var a = FLAG_KEYS.slice();
+  PEOPLE.forEach(function(p){ a.push("f_a4_look_"+p.k); a.push("f_a4_pose_"+p.k); });
+  PLACES.forEach(function(pl){ a.push("f_a4_chop_"+pl.k); });
+  INTENTS.forEach(function(it){ a.push("f_a4_intent_"+it.k); });
+  return a;
+}
+function startInv(){
+  var inv = [];
+  CARD_ORDER.forEach(function(k){ inv.push("it_card_"+k); });
+  CHOP_ORDER.forEach(function(k){ inv.push("it_chop_"+k); });
+  return inv;
+}
+function resetState(){
+  F = {}; allFlagKeys().forEach(function(k){ F[k]=false; });
+  FLAG_KEYS.forEach(function(k){ F[k]=false; });
+  INV = startInv(); READ = []; SEL = null; CAM = "room"; MIS = 0;
+  LOOK = {}; POSE = {}; CHOP = {}; INTENT = null;
+}
+function resetAct4(){ resetState(); }
+
+/* ══ 4. 存讀檔（只加不改）═════════════════════════════════════════════
+   寫盤時先把上一次的整個物件讀回來：f 逐鍵併（前三幕的旗一個不動），
+   done 只追加、notes 只追加，前三幕的 inv / read / cam / inv2 / read2 / cam2 /
+   inv3 / read3 / cam3 七個鍵原樣留著；本幕自己的物件欄／已讀／相機寫在新鍵
+   inv4 / read4 / cam4 上。 */
+var saveT = null;
+var DONE = (PREV && PREV.done && PREV.done.slice) ? PREV.done.slice() : [];
+var NOTE_LOG = (PREV && PREV.notes && PREV.notes.slice) ? PREV.notes.slice() : [];
+function markActDone(){
+  if(F.f_a4_done && DONE.indexOf(ACT_ID) < 0) DONE.push(ACT_ID);
+}
+function saveNow(){
+  try{
+    markActDone(); appendNotes();
+    var base = {}, k;
+    try{ base = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}") || {}; }catch(e){ base = {}; }
+    var fOut = {};
+    if(base.f) for(k in base.f) fOut[k] = base.f[k];
+    for(k in F) if(F[k]) fOut[k] = F[k];
+    var out = {};
+    for(k in base) out[k] = base[k];
+    out.f = fOut;
+    out.act = Math.max(base.act|0, ACT_NO);
+    out.done = DONE;
+    out.notes = NOTE_LOG;
+    out.inv4 = INV; out.read4 = READ; out.cam4 = CAM;
+    out.mis4 = MIS;
+    out.intent4 = INTENT;
+    out.ts = Date.now();
+    localStorage.setItem(SAVE_KEY, JSON.stringify(out));
+    digestTitle();
+  }catch(e){}
+}
+function saveDebounced(){ clearTimeout(saveT); saveT = setTimeout(saveNow, 300); }
+/* ══ 終局摘要（只在 ?title=1 時寫進 document.title）══════════════════════
+   走通驗收要的是「兩跑終局摘要相同」。摘要把兩條鏈的答案、旗、落錯次數
+   一併寫成一行，兩跑只要有一位不同，SHA256 就不同。 */
+var TITLE_DIGEST = /[?&]title=1/.test(location.search);
+function digestTitle(){
+  if(!TITLE_DIGEST) return;
+  document.title = "ACT4"
+    + "|POSE:" + [0,1,2,3,4,5,6,7].map(function(i){ return POSE[i]||"-"; }).join(",")
+    + "|CHOP:" + PLACES.map(function(p){ return p.k+"="+(CHOP[p.k]||"-"); }).join(",")
+    + "|INTENT:" + (INTENT||"-")
+    + "|SEAL:" + (F.f_a4_seal_pose?1:0) + (F.f_a4_seal_chop?1:0)
+    + "|DONE:" + DONE.join("+")
+    + "|MIS:" + MIS
+    + "|INV:" + INV.length
+    + "|FLAGS:" + allFlagKeys().filter(function(k){ return F[k]; }).length;
+}
+function load(){
+  try{
+    var raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return false;
+    var o = JSON.parse(raw);
+    if(!o || !o.f) return false;
+    allFlagKeys().forEach(function(k){ if(k in o.f) F[k] = o.f[k]; });
+    INV = (o.inv4 && o.inv4.length) ? o.inv4 : startInv();
+    READ = o.read4 || []; CAM = o.cam4 || "room";
+    if(typeof o.mis4 === "number") MIS = o.mis4;
+    PEOPLE.forEach(function(p){ if(F["f_a4_look_"+p.k]) LOOK[p.k] = 1; });
+    /* POSE / CHOP / INTENT 由旗還原：插在哪一框是 f_a4_pose_<人>（框序是死的），
+       哪一處領了哪一檔是 f_a4_chop_<處>，用意是 f_a4_intent_<值>。
+       三支旗互不相干。 */
+    PEOPLE.forEach(function(p){
+      if(!F["f_a4_pose_"+p.k]) return;
+      var i = POSE_TO.indexOf(p.k);
+      if(i >= 0) POSE[i] = p.k;
+    });
+    PLACES.forEach(function(pl){ if(F["f_a4_chop_"+pl.k]) CHOP[pl.k] = CHOP_TO[pl.k]; });
+    INTENTS.forEach(function(it){ if(F["f_a4_intent_"+it.k]) INTENT = it.k; });
+    return true;
+  }catch(e){ return false; }
+}
+
+/* ══ 5. DOM ════════════════════════════════════════════════════════════ */
+var D = function(s){ return document.querySelector(s); };
+var stage = D("#stage"), world = D("#world"), paperLayer = D("#paper-layer");
+var caption = D("#caption"), slotsEl = D("#slots");
+function el(tag, attrs){ var n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  if(attrs) for(var k in attrs) n.setAttribute(k, attrs[k]); return n; }
+function txt(cls, x, y, s, extra){
+  var t = el("text", { "class":cls, x:x, y:y });
+  if(extra) for(var k in extra) t.setAttribute(k, extra[k]);
+  t.textContent = s; return t;
+}
+function clear(n){ while(n && n.firstChild) n.removeChild(n.firstChild); }
+
+/* ══ 6. 資料表 ═════════════════════════════════════════════════════════
+   八個人的定義、八個姿的定義、三檔箸、三個去處、三種用意 —— 都是本回原文；
+   「哪一姿是誰」與「哪一檔去哪一處」是兩張互不相干的答案表 ——
+   鏈①只讀 POSE_TO，鏈②只讀 CHOP_TO 與 INTENT_ANSWER。 */
+var CN = ["一","二","三","四","五","六","七","八"];
+
+var PEOPLE = [
+  { k:"xiangyun", nm:"湘云",   full:"史湘云", addr:"史家的姪女",
+    gloss:"賈母的姪孫女。這一日她也在席上，坐在賈母這一桌。" },
+  { k:"daiyu",    nm:"黛玉",   full:"林黛玉", addr:"林家的女兒",
+    gloss:"賈母的外孫女。席上她的坐處挨著賈母。" },
+  { k:"bao",      nm:"寶玉",   full:"賈寶玉", addr:"賈母的孫子",
+    gloss:"王夫人所出。這一席他挨著賈母坐。" },
+  { k:"jiamu",    nm:"賈母",   full:"賈母",   addr:"史太君",
+    gloss:"這一席的主位。劉姥姥的小楠木桌就擺在她旁邊。" },
+  { k:"wang",     nm:"王夫人", full:"王夫人", addr:"賈母的媳婦",
+    gloss:"寶玉的母親。這一席由她陪著賈母。" },
+  { k:"xue",      nm:"薛姨媽", full:"薛姨媽", addr:"寶釵的母親",
+    gloss:"賈府的親戚，這一日在席上做客，坐在一邊吃茶。" },
+  { k:"tanchun",  nm:"探春",   full:"探春",   addr:"三小姐",
+    gloss:"賈家的三小姐。這一席擺在她的秋爽齋。" },
+  { k:"xichun",   nm:"惜春",   full:"惜春",   addr:"四小姐",
+    gloss:"賈家的四小姐。她的奶母這一日也跟著。" }
+];
+var PEOPLE_BY = {}; PEOPLE.forEach(function(p){ PEOPLE_BY[p.k] = p; });
+
+/* 鏈① 的答案表：索引＝姿框（0 起，按原文句子的先後），值＝該姿的人。 */
+var POSE_TO = ["xiangyun","daiyu","bao","jiamu","wang","xue","tanchun","xichun"];
+/* 姿框裡寫的是原文的動作，逐字截取（不寫人名 —— 人名要自己對上去）*/
+var POSE_L = [
+  ["一口飯都","噴了出來"],
+  ["伏著桌子","噯喲"],
+  ["滾到","賈母怀里"],
+  ["摟著寶玉","叫\"心肝\""],
+  ["用手指著","鳳姐儿"],
+  ["茶噴了","探春一裙子"],
+  ["飯碗都合在","迎春身上"],
+  ["离了坐位","叫揉一揉腸子"]
+];
+/* 名牌匣的擺法 —— 與姿框的次序無關。 */
+var CARD_ORDER = ["xichun","jiamu","tanchun","daiyu","wang","xiangyun","xue","bao"];
+
+var CHOPS = [
+  { k:"xiangya", nm:"象牙鑲金", l:["老年四楞","象牙鑲金"] },
+  { k:"wumu3",   nm:"烏木三鑲銀", l:["烏木","三鑲銀"] },
+  { k:"wumuyin", nm:"烏木鑲銀", l:["烏木","鑲銀"] }
+];
+var CHOP_BY = {}; CHOPS.forEach(function(c){ CHOP_BY[c.k] = c; });
+var CHOP_ORDER = ["wumuyin","xiangya","wumu3"];
+
+var PLACES = [
+  { k:"xi_place",   nm:"按席擺下",   l:["手巾裡裹著一把","按席擺下"] },
+  { k:"liu_place",  nm:"單拿与劉姥姥", l:["商議定了","單拿与劉姥姥"] },
+  { k:"huan_place", nm:"也照樣換上一雙", l:["收了過去","也照樣換上一雙"] }
+];
+var PLACE_BY = {}; PLACES.forEach(function(p){ PLACE_BY[p.k] = p; });
+/* 鏈② 的答案表（上半）：去處 -> 箸。 */
+var CHOP_TO = { xi_place:"wumu3", liu_place:"xiangya", huan_place:"wumuyin" };
+
+var INTENTS = [
+  { k:"taigao",    nm:"抬高" },
+  { k:"quxiao",    nm:"取笑" },
+  { k:"zhaochang", nm:"照常規" }
+];
+var INTENT_BY = {}; INTENTS.forEach(function(i){ INTENT_BY[i.k] = i; });
+/* 鏈② 的答案表（下半）。 */
+var INTENT_ANSWER = "quxiao";
+
+/* 全景裡的人：遠一排（畫在席面之前）與近一排（畫在席面之後）。
+   位置只是畫面上的位置，與判定無關 —— 判定只認姿。 */
+var FAR = [
+  { k:"xiangyun", kind:"fig",   x:330,  top:196, w:84, h:168, rot:-10, px:330, py:364, hs:true  },
+  { k:"daiyu",    kind:"fig",   x:452,  top:222, w:84, h:148, rot:19, px:452, py:370, hs:true  },
+  { k:"jiamu",    kind:"fig",   x:590,  top:188, w:88, h:176, rot:0,  px:590, py:364, hs:true  },
+  { k:"bao",      kind:"child", x:672,  top:240, w:76, h:112, rot:0,  px:672, py:352, hs:true  },
+  { k:"wang",     kind:"fig",   x:786,  top:200, w:84, h:166, rot:0,  px:786, py:366, hs:true  },
+  { k:"xue",      kind:"fig",   x:902,  top:214, w:84, h:158, rot:-14, px:902, py:372, hs:true  },
+  { k:"baochai",  kind:"fig",   x:1006, top:196, w:80, h:160, rot:0,  px:1006,py:356, hs:false }
+];
+var NEAR = [
+  { k:"tanchun",  kind:"fig",   x:560,  top:452, w:80, h:148, rot:0,  px:560, py:600, hs:true  },
+  { k:"yingchun", kind:"fig",   x:648,  top:462, w:76, h:136, rot:0,  px:648, py:598, hs:false },
+  { k:"xichun",   kind:"stand", x:1080, top:328, w:78, h:190, rot:0,  px:1080,py:518, hs:true  }
+];
+var GUEST = [
+  { k:"liu",      kind:"maid",  x:136,  top:332, w:72, h:140, rot:0,  px:136, py:472, hs:false }
+];
+var SERVANTS = [
+  { x:300,  top:620, w:52, h:96 },
+  { x:430,  top:616, w:52, h:96 },
+  { x:790,  top:622, w:52, h:96 },
+  { x:900,  top:618, w:52, h:96 },
+  { x:986,  top:480, w:56, h:108 }
+];
+var SYM_OF = { fig:"#sym_fig", child:"#sym_child", stand:"#sym_stand", maid:"#sym_maid" };
+/* 八個可判定的人。遠一排的熱點框只圍到席面沿（HIT_FAR_BOTTOM）為止 ——
+   再往下就被席面那幾筆蓋住了，真人點下去只會點到桌面。 */
+var FIG = FAR.filter(function(f){ return f.hs; }).concat(NEAR.filter(function(f){ return f.hs; }));
+var HIT_FAR_BOTTOM = 324;
+
+/* 近景的格子 */
+var PX0 = 40, PDX = 142, PY = 150, PW = 130, PH = 120;      /* 八個姿框 */
+var CX0 = 40, CDX = 142, CY = 290, CW = 130, CH = 76;       /* 名牌匣 */
+var LX = [40,300,560], LY = 492, LW = 250, LH = 96;         /* 三個去處 */
+var KX = [826,940,1054], KY = 492, KW = 110, KH = 96;       /* 三雙箸 */
+var IX = [40,206,372], IY = 622, IW = 156, IH = 78;         /* 三種用意 */
+
+/* ══ 7. 視圖 ═══════════════════════════════════════════════════════════ */
+function setCam(which){
+  CAM = which;
+  world.dataset.cam = which;
+  var vs = document.querySelectorAll(".view");
+  for(var i=0;i<vs.length;i++) vs[i].classList.toggle("active", vs[i].id === "view-" + which);
+  saveDebounced();
+}
+function goRoom(){ setCam("room"); }
+function goClose(){ setCam("close"); }
+
+/* ══ 8. 物件欄 ════════════════════════════════════════════════════════ */
+function give(id){ if(INV.indexOf(id) < 0) INV.push(id); renderInv(); saveDebounced(); }
+function take(id){
+  var i = INV.indexOf(id);
+  if(i >= 0){ INV.splice(i,1); if(SEL === id) SEL = null; renderInv(); saveDebounced(); }
+}
+function itemLabel(id){
+  if(/^it_card_/.test(id)){ var p = PEOPLE_BY[id.slice(8)]; return "名牌　" + (p ? p.full : id); }
+  if(/^it_chop_/.test(id)){ var c = CHOP_BY[id.slice(8)]; return "箸　" + (c ? c.nm : id); }
+  return id;
+}
+function renderInv(){
+  clear(slotsEl);
+  for(var i=0;i<INV.length;i++){
+    (function(id, idx){
+      var d = document.createElement("div");
+      d.className = "slot has" + (SEL===id ? " sel" : "");
+      d.setAttribute("data-slot", idx);
+      d.setAttribute("data-item", id);
+      d.innerHTML = '<svg viewBox="-4 -2 108 108" preserveAspectRatio="xMidYMid meet">'
+        + (/^it_chop_/.test(id) ? '<use href="#sym_stick"/>' : '<use href="#sym_card"/>') + '</svg><span class="under"></span>';
+      d.addEventListener("click", function(e){
+        e.stopPropagation();
+        /* 2026-10-18 修：物品欄在 #hud 裡，搆不到 #stage 上「點一下關台賬」那個監聽器；
+           台賬開著時 #world.modal 會把整個場景的 pointer-events 釘死，
+           於是點完物品欄之後「點哪都沒反應」（第一下只把台賬關掉）。
+           拿東西就是要用它 —— 這裡主動把台賬與幕間讓開。 */
+        showLedger(false);                     /* 無條件關台账：LEDGER 在部分幕是閉包變量，外部讀不到，直接關最穩 */
+        if(bridgeOpen()) closeBridge();
+        syncModal();
+        if(SEL === id){ SEL = null; }
+        else{ SEL = id; say("取了" + itemLabel(id) + "在手。", false, 3000); }
+        renderInv(); render(); saveDebounced();
+      });
+      slotsEl.appendChild(d);
+    })(INV[i], i);
+  }
+}
+
+/* ══ 9. 音效（WebAudio 合成，不引音頻文件）═════════════════════════════ */
+var AC = null, SND = true;
+function sfx(kind){
+  if(!SND) return;
+  try{
+    if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)();
+    var t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+    var f = kind==="wood"?150 : kind==="board"?260 : kind==="zhu"?430 : 200;
+    o.type = "sine"; o.frequency.value = f;
+    g.gain.value = 0.0001; o.connect(g); g.connect(AC.destination);
+    g.gain.exponentialRampToValueAtTime(0.06, t+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+(kind==="zhu"?0.5:0.22));
+    o.start(t); o.stop(t+(kind==="zhu"?0.52:0.24));
+  }catch(e){}
+}
+D("#snd").addEventListener("click", function(e){
+  e.stopPropagation(); SND = !SND;
+  say(SND ? "聲 · 開" : "聲 · 閉", false, 1200);
+  try{ localStorage.setItem("honglou.rustylake.settings", JSON.stringify({snd:SND})); }catch(e2){}
+});
+
+/* ══ 10. 環境文字：只指方位，不給內容，不出判語 ═══════════════════════ */
+var capT = null;
+function say(t, zhu, ms){
+  caption.textContent = t;
+  caption.classList.toggle("zhu", !!zhu);
+  caption.classList.add("on");
+  clearTimeout(capT);
+  if(ms !== 0) capT = setTimeout(function(){ caption.classList.remove("on"); }, ms||2600);
+}
+
+/* ══ 11. 司命簿 ═══════════════════════════════════════════════════════ */
+var LEDGER = true;
+function showLedger(on){
+  LEDGER = !!on;
+  D("#ledger").classList.toggle("on", LEDGER);
+  if(LEDGER){ closeBridge(); closePaperQuiet(); }
+  if(LEDGER) renderLedger();
+  syncModal();
+}
+function syncModal(){
+  var w = D("#world"); if(!w) return;
+  w.classList.toggle("modal", !!(LEDGER || bridgeOpen()));
+}
+function ledgerDone(){
+  return [ !!F.f_a4_seal_pose, !!F.f_a4_seal_chop, !!F.f_a4_done ];
+}
+function renderLedger(){
+  var done = ledgerDone();
+  for(var i=0;i<3;i++){
+    var dot = document.getElementById("led-dot-"+(i+1));
+    var tx  = document.getElementById("led-tx-"+(i+1));
+    if(!dot) continue;
+    if(done[i]){ dot.setAttribute("fill","var(--zhu)"); dot.setAttribute("r","6"); dot.setAttribute("stroke","none"); }
+    else { dot.setAttribute("fill","none"); dot.setAttribute("r","8"); dot.setAttribute("stroke","var(--ink2)"); }
+    if(tx) tx.classList.toggle("done", !!done[i]);
+  }
+  var n = document.getElementById("hs_led_notes");
+  if(n) n.classList.toggle("gone", !F.f_a4_done);
+  var hint = D("#led-hint");
+  if(hint){
+    if(F.f_a4_done) hint.textContent = "差事已畢。本幕所治已寫入校勘記 —— 點「取閱校勘記」。";
+    else hint.textContent = "席上沒有題目 —— 只有一席菜、八個人、八張名牌、三雙箸、一簽用意。";
+  }
+}
+
+/* ══ 12. 幕間過渡頁：把上一幕交下來的念一遍（讀不到不假裝）══════════ */
+function openBridge(){
+  var host = D("#bridge-lines");
+  clear(host);
+  var lines = [];
+  lines.push("上一班在席上交下來的話：");
+  lines.push("");
+  if(PREV && (prevDone("act3") || prevHas("f_a3_done"))){
+    lines.push("· 司命簿上有存檔，且第三幕（抄檢大觀園）的差事已經收束過一次。");
+    lines.push("  本班照著同一頁再走一遍 —— 上一班記下的東西原樣留在簿上。");
+    if(PREV.read3 && PREV.read3.length) lines.push("  （上一班在第三幕翻過的頁數：" + PREV.read3.length + " 頁。）");
+    if(PREV.mis3 !== undefined) lines.push("  （上一班在第三幕落錯過 " + PREV.mis3 + " 次。）");
+  }else if(PREV){
+    lines.push("· 司命簿上有存檔，但讀不到第三幕的收束記號。");
+    lines.push("  本班照實從大觀園這一席開始記，不替上一班認帳。");
+  }else{
+    lines.push("· 司命簿上沒有上一班的存檔 —— 這是第一班進大觀園。");
+    lines.push("  校勘記從本幕這一頁開始記。");
+  }
+  lines.push("");
+  lines.push("本班的差事（兩件）：");
+  lines.push("一、認笑態 —— 八張名牌各歸一姿：誰噴了飯、誰伏了桌、誰離了坐位。");
+  lines.push("二、辨箸 —— 三雙箸各歸一處；再看這一次的「優待」，用意是什麼。");
+  lines.push("");
+  lines.push("上一班留下的話：「無徵不信；不假外求。」");
+  var y = 240;
+  for(var i=0;i<lines.length;i++){
+    var t = el("text",{ "class":"br-body", x:372, y:y });
+    t.textContent = lines[i];
+    host.appendChild(t);
+    y += (lines[i] === "" ? 10 : 25);
+  }
+  D("#bridge").classList.add("on");
+  F.f_a4_bridge_read = true; saveDebounced();
+  syncModal();
+}
+function closeBridge(){ D("#bridge").classList.remove("on"); syncModal(); }
+function bridgeOpen(){ return D("#bridge").classList.contains("on"); }
+
+/* ══ 13. 紙頁 ═════════════════════════════════════════════════════════ */
+var PAPER_OPEN = null;
+function wrap(s, n){ var out = [], i; for(i=0;i<s.length;i+=n) out.push(s.slice(i,i+n)); return out; }
+function docDoc(pages, pi, sub, note){
+  if(pi < 0) pi = 0;
+  if(pi > pages.length-1) pi = pages.length-1;
+  var P = pages[pi];
+  PAPER_OPEN = P.title;
+  clear(paperLayer);
+  var W = 740, H = 536, X = 600-W/2, Y = 360-H/2;
+  var g = el("g", { "class":"paper show", transform:"translate("+X+","+Y+")" });
+  g.appendChild(el("rect",{ x:-4, y:-4, width:W+8, height:H+8, rx:4, "class":"shadow" }));
+  g.appendChild(el("path",{ "class":"l1 f-card",
+    d:"M2,2.6 C200,1 560,3.2 738,1.6 L738,"+(H-1.6)+" C560,"+(H-3.4)+" 200,"+(H-0.8)+" 2,"+(H-2.4)+" Z" }));
+  g.appendChild(txt("paper-title", W/2, 46, P.title, { "text-anchor":"middle" }));
+  if(sub) g.appendChild(txt("paper-sub", W/2, 70, sub, { "text-anchor":"middle" }));
+  var y = 112;
+  for(var i=0;i<P.body.length;i++){
+    wrap(P.body[i], 32).forEach(function(seg){
+      var tx = el("text",{ "class":"paper-body", x:40, y:y });
+      var marks = [], cur = 0;
+      (P.keys||[]).forEach(function(k){ var idx=0,p; while((p=seg.indexOf(k,idx))>=0){ marks.push([p,p+k.length]); idx=p+1; } });
+      marks.sort(function(a,b){ return a[0]-b[0]; });
+      marks.forEach(function(m){
+        if(m[0] < cur) return;
+        if(m[0] > cur){ var n1 = el("tspan"); n1.textContent = seg.slice(cur,m[0]); tx.appendChild(n1); }
+        var sp = el("tspan"); sp.setAttribute("class","key"); sp.textContent = seg.slice(m[0],m[1]); tx.appendChild(sp);
+        cur = m[1];
+      });
+      if(cur < seg.length){ var n2 = el("tspan"); n2.textContent = seg.slice(cur); tx.appendChild(n2); }
+      g.appendChild(tx); y += 25;
+    });
+    y += 5;
+  }
+  if(note) g.appendChild(txt("paper-sub", 40, H-44, note, { "font-size":12.5, fill:"var(--faint)" }));
+  g.appendChild(txt("paper-sub langnote", 40, note ? H-26 : H-44, LANG_NOTE, { "font-size":12.5, fill:"var(--faint)" }));
+  var total = pages.length;
+  if(total > 1){
+    for(i=0;i<total;i++){
+      g.appendChild(el("circle",{ cx:(W/2 - (total-1)*16/2 + i*16), cy:H-56, r:4,
+        fill:(i===pi) ? "var(--zhu)" : "none",
+        stroke:(i===pi) ? "none" : "var(--faint)", "stroke-width":1 }));
+    }
+  }
+  if(pi > 0){
+    g.appendChild(txt("paper-close", 40, H-30, "◂ 前一頁", { "font-size":14 }));
+    var hp = el("rect",{ x:30, y:H-48, width:96, height:30, fill:"transparent" });
+    hp.setAttribute("style","cursor:pointer");
+    hp.addEventListener("click", function(ev){ ev.stopPropagation(); docDoc(pages, pi-1, sub, note); });
+    g.appendChild(hp);
+  }
+  if(pi < total-1){
+    g.appendChild(txt("paper-close", W-40, H-30, "後一頁 ▸", { "font-size":14, "text-anchor":"end" }));
+    var hn = el("rect",{ x:W-136, y:H-48, width:96, height:30, fill:"transparent" });
+    hn.setAttribute("style","cursor:pointer");
+    hn.addEventListener("click", function(ev){ ev.stopPropagation(); docDoc(pages, pi+1, sub, note); });
+    g.appendChild(hn);
+  }
+  g.appendChild(txt("paper-close", W/2, H-12, "點紙外任意處 · 收起", { "text-anchor":"middle" }));
+  g.addEventListener("click", function(ev){ ev.stopPropagation(); closePaper(); });
+  paperLayer.appendChild(g);
+  saveDebounced();
+  syncLangNotes();
+}
+function closePaper(){ PAPER_OPEN = null; clear(paperLayer); }
+function closePaperQuiet(){ PAPER_OPEN = null; clear(paperLayer); }
+
+/* 席上體例（本幕自撰，非引文）*/
+var RULE_PAGES = [
+  { title:"席 上 體 例 · 認 笑 態",
+    body:[
+      "一、本幕的畫面上只有一瞬：席上八個人，各擺一姿 —— 這是這一班的定格，不是原文的插畫。",
+      "二、八張名牌各歸一姿。誰是哪一姿，只讀一句話：原文那一句一連串寫了八個人，",
+      "　　一個接一個，句子裡誰先誰後，就是你手裡那八張牌的次序。",
+      "三、判定只認姿，不認人站在哪裡 —— 座位是畫面上的位置，不是答案。",
+      "四、一牌一框。短一張牌，印按不下去；落錯了，牌自己順案沿滑回匣裡，那一框暗一檔。",
+      "五、八牌齊，笑態用印。"
+    ],
+    keys:["認笑態","姿","笑態用印"] },
+  { title:"席 上 體 例 · 辨 箸",
+    body:[
+      "一、本回有三檔箸，看的是材與飾，不是長短：",
+      "　　一檔通體烏木、三處鑲銀；一檔象牙為骨、四楞、鑲金；一檔通體烏木、只鑲銀。",
+      "二、三個去處各領一雙：按席擺下的、單拿与一個人的、後來又照樣換上的。",
+      "三、哪一檔去哪一處，原文一句一句寫著 —— 體例只說有三檔，不替原文派定。",
+      "四、箸落錯了，箸自己順席沿滑回匣裡，那一處暗一檔。",
+      "五、三雙箸各歸一處，再定一簽「用意」；箸齊、簽定，用印。",
+      "（體例是這一班立的；八個人與三雙箸的憑據全在「引文」兩頁裡。）"
+    ],
+    keys:["辨箸","三檔箸","用意","用印"] }
+];
+function showRule(pi){
+  F.f_a4_rule_read = true;
+  if(READ.indexOf("rule_"+pi) < 0) READ.push("rule_"+pi);
+  docDoc(RULE_PAGES, pi||0, "大觀園 · 本班自撰體例（非引文）",
+    "（體例是這一班立的，不是古籍引文；原文只在「引文」兩頁。）");
+}
+
+/* 引文頁：原文逐字 */
+function srcKey(i){ return "src_"+i; }
+var SRC_SUB = "第四十回 · 工作底本 PG24264（程甲本系統）逐字";
+var SRC_KEYS1 = ["湘云","黛玉","寶玉","賈母","王夫人","薛姨媽","探春","惜春"];
+function showSrc(pi){
+  F.f_a4_src_read = true;
+  var pages = [
+    { title:"引 文 · 八 人 八 姿",
+      body:[
+        "〔一〕" + (CITE.q1 ? CITE.q1.text : ""),
+        "",
+        "按：這是一句，不是八句。八個人一個接一個寫下來 ——",
+        "噴飯的、伏桌的、滾進懷裡的、摟著叫心肝的、指著人說不出話的、",
+        "茶噴了人一裙子的、飯碗合到鄰座身上的、離了坐位的。",
+        "姿就是這八個；誰是哪一個，句子的次序就是答案的次序。",
+        "",
+        "字形照抄：本回底本作「气」（笑岔了气）、「离」（离了坐位）、",
+        "「云」（史湘云）、「儿」（鳳姐儿）—— 沒有規範化，也沒有轉繁。"
+      ],
+      keys: SRC_KEYS1 },
+    { title:"引 文 · 三 雙 箸",
+      body:[
+        "〔二〕" + (CITE.q2 ? CITE.q2.text : ""),
+        "按：這一雙在鳳姐手里的西洋布手巾裡裹著，" + (CITE.q10 ? CITE.q10.text : "") + "。",
+        "",
+        "〔三〕" + (CITE.q3 ? CITE.q3.text : ""),
+        "按：這一雙是商議定了單拿的 —— 不是席上擺的那一雙。",
+        "",
+        "〔四〕" + (CITE.q4 ? CITE.q4.text : ""),
+        "按：賈母發話之後，收過去的那一雙換成了這一雙。",
+        "",
+        "〔五〕" + (CITE.q5 ? CITE.q5.text : ""),
+        "〔六〕" + (CITE.q6 ? CITE.q6.text : ""),
+        "",
+        "按：劉姥姥只說沉、只說不伏手；她不知道「金的」是什麼木頭。"
+      ],
+      keys:["烏木三鑲銀箸","象牙鑲金","烏木鑲銀","鐵掀","伏手"] },
+    { title:"引 文 · 這 一 次 的 用 意",
+      body:[
+        "〔七〕" + (CITE.q7 ? CITE.q7.text : ""),
+        "",
+        "按：這一句是商議的時候說的。席上的「單拿」，是照這一句辦的。",
+        "　　所以那一雙象牙鑲金的筷子，不是賞，是逗。",
+        "",
+        "〔八〕" + (CITE.q8 ? CITE.q8.text : ""),
+        "〔九〕" + (CITE.q9 ? CITE.q9.text : ""),
+        "",
+        "按：這兩句是劉姥姥在牙牌令上說的，底本真有的就這兩句。",
+        "　　通行本另有一句「一個蘿蔔一頭蒜」—— 它不在這個底本裡，本幕不補。"
+      ],
+      keys:["取個笑儿","毛毛虫","大倭瓜"] }
+  ];
+  if(READ.indexOf(srcKey(pi||0)) < 0) READ.push(srcKey(pi||0));
+  docDoc(pages, pi||0, SRC_SUB, null);
+}
+
+/* 名帖頁：人 + 身份（不寫她做了什麼 —— 姿要自己對）*/
+function showPerson(k){
+  var p = PEOPLE_BY[k];
+  if(!p) return;
+  if(!LOOK[k]){ LOOK[k] = 1; F["f_a4_look_"+k] = true; }
+  var body = [];
+  body.push("名　" + p.full);
+  body.push("身份　" + p.addr);
+  body.push("");
+  body.push(p.gloss);
+  body.push("");
+  body.push("按　這一頁只寫她是誰、坐在哪裡 —— 不寫她做了什麼。");
+  body.push("　　她擺的是哪一姿，在「引文」那一頁的那一句裡。");
+  docDoc([{ title:"名 帖 · " + p.nm, body: body, keys: [p.nm] }], 0,
+    "第四十回 · 本底本逐字互證", null);
+  render(); saveDebounced();
+}
+
+/* ══ 14. 鏈① 認笑態 —— 判定線落在「第幾框」上，不讀任何箸旗 ═══════════
+   judgePose(i, k) 只讀 POSE_TO；函數體內沒有一個 CHOP / CHOP_TO / INTENT。 */
+function judgePose(i, k){ return POSE_TO[i] === k; }
+function poseSlotOf(k){ for(var i=0;i<POSE_TO.length;i++) if(POSE[i] === k) return i; return -1; }
+function poseCount(){ var n=0; for(var i=0;i<8;i++) if(POSE[i]) n++; return n; }
+function pickCard(k){
+  if(poseSlotOf(k) >= 0){
+    say("這張名牌已經插在框上了 —— 點那一框，牌自己回匣裡。", false, 3400); return;
+  }
+  if(INV.indexOf("it_card_"+k) < 0){
+    say("名牌匣裡沒有這一張。", false, 2600); return;
+  }
+  SEL = "it_card_" + k;
+  say("取了名牌　" + PEOPLE_BY[k].full + "。", false, 2400);
+  render(); saveDebounced();
+}
+function tapPoseCell(i){
+  if(POSE[i]){ unplacePose(i); return; }
+  if(!SEL || !/^it_card_/.test(SEL)){
+    say("手邊空著 —— 先從名牌匣裡取一張。", false, 3000); return;
+  }
+  placePoseAt(SEL.slice(8), i);
+}
+function unplacePose(i){
+  var k = POSE[i];
+  if(!k) return;
+  delete POSE[i]; F["f_a4_pose_"+k] = false;
+  give("it_card_"+k);
+  if(SEL === "it_card_"+k) SEL = null;
+  sfx("wood"); say("牌回匣裡。", false, 2000);
+  render(); saveDebounced();
+}
+function placePoseAt(k, i){
+  if(!PEOPLE_BY[k]) return;
+  if(POSE[i]){ say("這一框上已經有一張牌 —— 點它，牌自己回匣裡。", false, 3400); return; }
+  if(!judgePose(i, k)){ rejectPose(k, i); return; }
+  POSE[i] = k; F["f_a4_pose_"+k] = true;
+  take("it_card_"+k); SEL = null;
+  sfx("board"); say("牌插在「" + POSE_L[i][0] + "」那一框上。", false, 2200);
+  render(); saveDebounced();
+}
+function rejectPose(k, i){
+  MIS++;
+  var cell = document.getElementById("posecell-"+i);
+  if(cell){ cell.classList.add("dimmed"); setTimeout(function(){ cell.classList.remove("dimmed"); }, 780); }
+  var x = PX0 + i*PDX, y = PY;
+  var host = D("#view-close");
+  var g = el("g", { "class":"ghost", "pointer-events":"none", style:"transition:transform 460ms ease" });
+  g.appendChild(el("path", { "class":"l1 f-card",
+    d:"M"+(x+4)+","+(y+3.4)+" L"+(x+PW-4)+","+(y+2.6)+" L"+(x+PW-4)+","+(y+PH-2.6)+" L"+(x+4)+","+(y+PH-3) + " Z" }));
+  g.appendChild(txt("tx-k", x+PW/2, y+44, PEOPLE_BY[k].nm, { "font-size":15, "text-anchor":"middle" }));
+  host.appendChild(g);
+  setTimeout(function(){ g.classList.add("fall"); g.setAttribute("transform","translate(0," + (CY-y+6) + ")"); }, 20);
+  setTimeout(function(){ if(g.parentNode) g.parentNode.removeChild(g); }, 700);
+  sfx("wood");
+  say("這一牌順著案沿滑回匣裡 —— 噴出來的那一口，是誰的嘴邊？", true, 4600);
+  render(); saveDebounced();
+}
+function sealPose(){
+  if(F.f_a4_seal_pose){ say("笑態已經用過印。", false, 2000); return; }
+  if(poseCount() < 8){
+    say("八牌還沒齊 —— 牌齊了才用印。", false, 3200); return;
+  }
+  F.f_a4_seal_pose = true;
+  D("#seal-pose").classList.add("on");
+  sfx("zhu"); say("笑態用印。", false, 2400);
+  render(); saveNow();
+}
+
+/* ══ 15. 鏈② 辨箸 —— 判定線落在「哪一檔去哪一處」與「用意」上，不讀任何姿旗 ═
+   judgeChop(place, kind) 只讀 CHOP_TO；judgeIntent(v) 只讀 INTENT_ANSWER。
+   兩個函數體內都沒有一個 POSE / POSE_TO。 */
+function judgeChop(place, kind){ return CHOP_TO[place] === kind; }
+function judgeIntent(v){ return INTENT_ANSWER === v; }
+function chopOwner(kind){ for(var p in CHOP) if(CHOP[p] === kind) return p; return null; }
+function chopCount(){ var n=0; for(var p in CHOP) if(CHOP[p]) n++; return n; }
+function pickChop(kind){
+  if(chopOwner(kind)){
+    say("這一雙箸已經擺下了 —— 點那一處，箸自己回匣裡。", false, 3400); return;
+  }
+  if(INV.indexOf("it_chop_"+kind) < 0){
+    say("案上沒有這一雙。", false, 2600); return;
+  }
+  SEL = "it_chop_" + kind;
+  say("取了箸　" + CHOP_BY[kind].nm + "。", false, 2400);
+  render(); saveDebounced();
+}
+function tapPlace(k){
+  if(CHOP[k]){ unplaceChop(k); return; }
+  if(!SEL || !/^it_chop_/.test(SEL)){
+    say("手邊空著 —— 先從案上取一雙箸。", false, 3000); return;
+  }
+  placeChopAt(k, SEL.slice(8));
+}
+function unplaceChop(k){
+  var kind = CHOP[k];
+  if(!kind) return;
+  delete CHOP[k]; F["f_a4_chop_"+k] = false;
+  give("it_chop_"+kind);
+  if(SEL === "it_chop_"+kind) SEL = null;
+  sfx("wood"); say("箸回匣裡。", false, 2000);
+  render(); saveDebounced();
+}
+function placeChopAt(k, kind){
+  if(!PLACE_BY[k] || !CHOP_BY[kind]) return;
+  if(CHOP[k]){ say("這一處已經擺了一雙 —— 點它，箸自己回匣裡。", false, 3400); return; }
+  if(!judgeChop(k, kind)){ rejectChop(k, kind); return; }
+  CHOP[k] = kind; F["f_a4_chop_"+k] = true;
+  take("it_chop_"+kind); SEL = null;
+  sfx("board"); say("箸擺在「" + PLACE_BY[k].nm + "」那一處。", false, 2200);
+  render(); saveDebounced();
+}
+function rejectChop(k, kind){
+  MIS++;
+  var i = 0; for(var j=0;j<PLACES.length;j++) if(PLACES[j].k === k) i = j;
+  var cell = document.getElementById("placecell-"+k);
+  if(cell){ cell.classList.add("dimmed"); setTimeout(function(){ cell.classList.remove("dimmed"); }, 780); }
+  var x = LX[i], y = LY;
+  var host = D("#view-close");
+  var g = el("g", { "class":"ghost", "pointer-events":"none", style:"transition:transform 460ms ease" });
+  g.appendChild(el("path", { "class":"l1 f-card",
+    d:"M"+(x+4)+","+(y+3.4)+" L"+(x+LW-4)+","+(y+2.6)+" L"+(x+LW-4)+","+(y+LH-2.6)+" L"+(x+4)+","+(y+LH-3) + " Z" }));
+  g.appendChild(txt("tx-k", x+LW/2, y+52, CHOP_BY[kind].nm, { "font-size":13, "text-anchor":"middle" }));
+  host.appendChild(g);
+  setTimeout(function(){ g.classList.add("fall"); g.setAttribute("transform","translate(" + (KX[0]-x) + "," + (KY-y+6) + ")"); }, 20);
+  setTimeout(function(){ if(g.parentNode) g.parentNode.removeChild(g); }, 700);
+  sfx("wood");
+  say("這一雙順著席沿滑回案上 —— 手巾裡裹著的那一把，去哪一處？", true, 4600);
+  render(); saveDebounced();
+}
+function pickIntent(v){
+  if(INTENT){ say("用意已定 —— 點那一簽，簽自己回案下。", false, 3200); return; }
+  if(!INTENT_BY[v]) return;
+  if(!judgeIntent(v)){ rejectIntent(v); return; }
+  INTENT = v; F["f_a4_intent_"+v] = true;
+  sfx("board"); say("用意落在「" + INTENT_BY[v].nm + "」那一簽上。", false, 2400);
+  render(); saveDebounced();
+}
+function unpickIntent(){
+  if(!INTENT) return;
+  F["f_a4_intent_"+INTENT] = false;
+  INTENT = null;
+  sfx("wood"); say("簽回案下。", false, 2000);
+  render(); saveDebounced();
+}
+function rejectIntent(v){
+  MIS++;
+  var i = 0; for(var j=0;j<INTENTS.length;j++) if(INTENTS[j].k === v) i = j;
+  var cell = document.getElementById("intentcell-"+v);
+  if(cell){ cell.classList.add("dimmed"); setTimeout(function(){ cell.classList.remove("dimmed"); }, 780); }
+  var x = IX[i], y = IY;
+  var host = D("#view-close");
+  var g = el("g", { "class":"ghost", "pointer-events":"none", style:"transition:transform 460ms ease" });
+  g.appendChild(el("path", { "class":"l1 f-card",
+    d:"M"+(x+4)+","+(y+3.4)+" L"+(x+IW-4)+","+(y+2.6)+" L"+(x+IW-4)+","+(y+IH-2.6)+" L"+(x+4)+","+(y+IH-3) + " Z" }));
+  g.appendChild(txt("tx-k", x+IW/2, y+46, INTENT_BY[v].nm, { "font-size":15, "text-anchor":"middle" }));
+  host.appendChild(g);
+  setTimeout(function(){ g.classList.add("fall"); g.setAttribute("transform","translate(0,88)"); }, 20);
+  setTimeout(function(){ if(g.parentNode) g.parentNode.removeChild(g); }, 700);
+  sfx("wood");
+  say("這一簽落回案下 —— 商議的時候，那一句是怎麼說的？", true, 4600);
+  render(); saveDebounced();
+}
+function sealChop(){
+  if(F.f_a4_seal_chop){ say("箸已經用過印。", false, 2000); return; }
+  if(chopCount() < 3){
+    say("三雙還沒齊 —— 三雙各歸一處，才用印。", false, 3400); return;
+  }
+  if(!INTENT){
+    say("用意那一簽還空著 —— 簽定了才用印。", false, 3400); return;
+  }
+  F.f_a4_seal_chop = true;
+  D("#seal-chop").classList.add("on");
+  sfx("zhu"); say("箸用印。", false, 2400);
+  render(); saveNow();
+}
+
+/* ══ 16. 渲染 ═══════════════════════════════════════════════════════════ */
+function figUse(host, f){
+  var u = el("use", { href:SYM_OF[f.kind], x:f.x-f.w/2, y:f.top, width:f.w, height:f.h });
+  if(f.rot) u.setAttribute("transform", "rotate(" + f.rot + " " + f.px + " " + f.py + ")");
+  host.appendChild(u);
+}
+function gp(host, cls, d){ host.appendChild(el("path", { "class":cls, d:d })); }
+function gc(host, cx, cy, r, fill){ host.appendChild(el("circle", { cx:cx, cy:cy, r:r, fill:fill||"var(--ink2)" })); }
+
+function renderRoomFigs(){
+  var far = D("#figs-far"), near = D("#figs-near"),
+      guest = D("#figs-guest"), serv = D("#figs-servants");
+  if(!far) return;
+  clear(far); clear(near); clear(guest); clear(serv);
+
+  /* 遠一排（畫在席面之前，下半身被席面遮住）*/
+  FAR.forEach(function(f){ figUse(far, f); });
+  /* 姿：湘云 噴飯（一口飯往上噴）*/
+  gp(far, "l2", "M338,232 C358,216 382,204 402,196");
+  gc(far, 396, 200, 2.2); gc(far, 408, 194, 2.6); gc(far, 420, 198, 1.9); gc(far, 430, 206, 2.2);
+  /* 姿：黛玉 伏桌（額手貼在桌沿上）*/
+  gp(far, "l2", "M428,300 C446,308 468,310 486,306");
+  gp(far, "l3", "M414,318 L500,315");
+  /* 姿：賈母 摟著寶玉（雙臂合在寶玉身上）—— 畫在寶玉之後才摟得住 */
+  /* 姿：王夫人 用手指著（手臂伸向右邊）*/
+  gp(far, "l2", "M826,264 C856,260 886,254 914,248");
+  gp(far, "l2", "M914,248 L926,244");
+  /* 姿：薛姨媽 撐不住，茶噴了探春一裙子（一道茶線斜著往左下去）*/
+  gp(far, "l2", "M900,272 C824,306 706,346 608,404");
+  gc(far, 806, 316, 2.2); gc(far, 744, 344, 2); gc(far, 676, 374, 2.4);
+
+  /* 賈母的雙臂：畫在寶玉與她本人之後 */
+  gp(far, "l2", "M602,266 C616,282 632,292 648,296");
+  gp(far, "l2", "M640,258 C654,272 664,282 672,292");
+
+  /* 近一排（畫在席面之後）*/
+  NEAR.forEach(function(f){ figUse(near, f); });
+  /* 姿：探春 手里的飯碗合在迎春身上（碗倒向迎春，飯粒灑過去）*/
+  gp(near, "l2", "M586,470 L612,464 L616,480 L590,486 Z");
+  gp(near, "l3", "M604,466 L636,474 M604,478 L634,486");
+  gc(near, 630, 480, 2.2); gc(near, 640, 490, 1.9); gc(near, 648, 500, 2.2);
+  /* 姿：惜春 離了坐位，拉著奶母叫揉一揉腸子 */
+  gp(near, "l2", "M1064,424 C1046,442 1026,458 1008,470");
+  /* 近處接觸影 */
+  NEAR.forEach(function(f){
+    near.appendChild(el("path", { "class":"shadow",
+      d:"M"+(f.x-40)+","+(f.top+f.h-6)+" L"+(f.x+40)+","+(f.top+f.h-7)+" L"+(f.x+46)+","+(f.top+f.h+4)+" L"+(f.x-46)+","+(f.top+f.h+5)+" Z" }));
+  });
+
+  /* 劉姥姥（小楠木桌旁，不可點）*/
+  GUEST.forEach(function(f){ figUse(guest, f); });
+
+  /* 地下的媳婦丫頭（不可點，無 .hs）*/
+  SERVANTS.forEach(function(f){
+    guest.appendChild(el("use", { href:"#sym_maid", x:f.x-f.w/2, y:f.top, width:f.w, height:f.h }));
+  });
+
+  /* 八個可點的人：熱點框只圍住露在席面以上（遠一排）或席面以前（近一排）的那一段 */
+  FAR.forEach(function(f){
+    if(!f.hs) return;
+    var bot = HIT_FAR_BOTTOM;
+    var g = el("g", { "class":"hs on", "data-hs":"h_look_"+f.k, id:"hs_look_"+f.k });
+    g.appendChild(el("rect", { "class":"hit", x:f.x-38, y:f.top-8, width:76, height:bot-(f.top-8) }));
+    var art = el("g", { "class":"art" });
+    art.appendChild(el("path", { "class":"l3", d:"M"+(f.x-30)+","+(bot+2)+" L"+(f.x+30)+","+(bot+1) }));
+    g.appendChild(art);
+    far.appendChild(g);
+  });
+  NEAR.forEach(function(f){
+    if(!f.hs) return;
+    var bot = f.top + f.h + 12;
+    var g = el("g", { "class":"hs on", "data-hs":"h_look_"+f.k, id:"hs_look_"+f.k });
+    g.appendChild(el("rect", { "class":"hit", x:f.x-38, y:f.top-8, width:76, height:bot-(f.top-8) }));
+    var art = el("g", { "class":"art" });
+    art.appendChild(el("path", { "class":"l3", d:"M"+(f.x-30)+","+(bot)+" L"+(f.x+30)+","+(bot-1) }));
+    g.appendChild(art);
+    near.appendChild(g);
+  });
+}
+function renderRoom(){
+  FIG.forEach(function(f){
+    var g = document.getElementById("hs_look_"+f.k);
+    if(g) g.classList.toggle("armed", !!LOOK[f.k]);
+  });
+}
+function renderPoseCells(){
+  var host = D("#pose-cells"); if(!host) return;
+  clear(host);
+  for(var i=0;i<8;i++){
+    var x = PX0 + i*PDX, y = PY;
+    var cell = el("g", { "class":"hs on posecell" + (POSE[i] ? " set" : ""),
+      id:"posecell-"+i, "data-hs":"h_slot_"+i });
+    cell.appendChild(el("rect", { "class":"hit", x:x-2, y:y-2, width:PW+4, height:PH+4 }));
+    var art = el("g", { "class":"art" });
+    art.appendChild(el("path", { "class":"recess",
+      d:"M"+x+","+(y+4.4)+" L"+(x+PW)+","+(y+3.6)+" L"+(x+PW)+","+(y+PH-4.4)+" L"+x+","+(y+PH-3.6)+" Z" }));
+    art.appendChild(el("path", { "class":"l2",
+      d:"M"+x+","+(y+PH-3.6)+" L"+(x+PW)+","+(y+PH-4.4) }));
+    art.appendChild(txt("tx-k", x+PW/2, y+38, POSE_L[i][0], { "font-size":13, "text-anchor":"middle" }));
+    art.appendChild(txt("tx-k", x+PW/2, y+60, POSE_L[i][1], { "font-size":13, "text-anchor":"middle" }));
+    var inp = el("g", { "class":"inp", id:"in-pose-"+i });
+    if(POSE[i]) inp.appendChild(txt("tx-z", x+PW/2, y+92, PEOPLE_BY[POSE[i]].full, { "font-size":15, "text-anchor":"middle" }));
+    art.appendChild(inp);
+    cell.appendChild(art);
+    host.appendChild(cell);
+  }
+}
+function renderCardBox(){
+  var host = D("#card-box"); if(!host) return;
+  clear(host);
+  CARD_ORDER.forEach(function(k, i){
+    if(poseSlotOf(k) >= 0) return;
+    var x = CX0 + i*CDX, y = CY;
+    var g = el("g", { "class":"hs on cardcell", "data-hs":"h_card_"+k, id:"hs_card_"+k });
+    g.appendChild(el("rect", { "class":"hit", x:x, y:y, width:CW, height:CH }));
+    var art = el("g", { "class":"art" });
+    art.appendChild(el("path", { "class":"l1 f-card",
+      d:"M"+x+","+(y+1.4)+" L"+(x+CW)+","+y+" L"+(x+CW)+","+(y+CH-1.4)+" L"+x+","+(y+CH) + " Z" }));
+    art.appendChild(txt("tx-k", x+CW/2, y+36, PEOPLE_BY[k].full, { "font-size":16, "text-anchor":"middle" }));
+    art.appendChild(txt("tx-k", x+CW/2, y+60, "＋", { "font-size":13, "text-anchor":"middle", fill:"var(--faint)" }));
+    g.appendChild(art);
+    host.appendChild(g);
+  });
+}
+function renderPlaceCells(){
+  var host = D("#place-cells"); if(!host) return;
+  clear(host);
+  PLACES.forEach(function(pl, i){
+    var x = LX[i], y = LY;
+    var cell = el("g", { "class":"hs on placecell" + (CHOP[pl.k] ? " set" : ""),
+      id:"placecell-"+pl.k, "data-hs":"h_place_"+pl.k });
+    cell.appendChild(el("rect", { "class":"hit", x:x-2, y:y-2, width:LW+4, height:LH+4 }));
+    var art = el("g", { "class":"art" });
+    art.appendChild(el("path", { "class":"recess",
+      d:"M"+x+","+(y+4.4)+" L"+(x+LW)+","+(y+3.6)+" L"+(x+LW)+","+(y+LH-4.4)+" L"+x+","+(y+LH-3.6)+" Z" }));
+    art.appendChild(el("path", { "class":"l2",
+      d:"M"+x+","+(y+LH-3.6)+" L"+(x+LW)+","+(y+LH-4.4) }));
+    art.appendChild(txt("tx-k", x+LW/2, y+34, pl.l[0], { "font-size":12, "text-anchor":"middle", fill:"var(--ink2)" }));
+    art.appendChild(txt("tx-k", x+LW/2, y+56, pl.l[1], { "font-size":15, "text-anchor":"middle" }));
+    var inp = el("g", { "class":"inp", id:"in-place-"+pl.k });
+    if(CHOP[pl.k]) inp.appendChild(txt("tx-z", x+LW/2, y+84, CHOP_BY[CHOP[pl.k]].nm, { "font-size":14, "text-anchor":"middle" }));
+    art.appendChild(inp);
+    cell.appendChild(art);
+    host.appendChild(cell);
+  });
+}
+function renderChopBox(){
+  var host = D("#chop-box"); if(!host) return;
+  clear(host);
+  CHOPS.forEach(function(c){
+    var i = CHOP_ORDER.indexOf(c.k); if(i < 0) i = 0;
+    if(chopOwner(c.k)) return;
+    var x = KX[i], y = KY;
+    var g = el("g", { "class":"hs on chopcell", "data-hs":"h_chop_"+c.k, id:"hs_chop_"+c.k });
+    g.appendChild(el("rect", { "class":"hit", x:x, y:y, width:KW, height:KH }));
+    var art = el("g", { "class":"art" });
+    art.appendChild(el("path", { "class":"l1 f-card",
+      d:"M"+x+","+(y+1.4)+" L"+(x+KW)+","+y+" L"+(x+KW)+","+(y+KH-1.4)+" L"+x+","+(y+KH) + " Z" }));
+    art.appendChild(txt("tx-k", x+KW/2, y+30, c.l[0], { "font-size":12, "text-anchor":"middle", fill:"var(--ink2)" }));
+    art.appendChild(txt("tx-k", x+KW/2, y+52, c.l[1], { "font-size":13, "text-anchor":"middle" }));
+    art.appendChild(el("path", { "class":"l3 miter", d:"M"+(x+16)+","+(y+68)+" L"+(x+KW-16)+","+(y+67.4) }));
+    art.appendChild(txt("tx-k", x+KW/2, y+86, "＋", { "font-size":12, "text-anchor":"middle", fill:"var(--faint)" }));
+    g.appendChild(art);
+    host.appendChild(g);
+  });
+}
+function renderIntentCells(){
+  var host = D("#intent-cells"); if(!host) return;
+  clear(host);
+  INTENTS.forEach(function(it, i){
+    var x = IX[i], y = IY;
+    var cell = el("g", { "class":"hs on intentcell" + (INTENT === it.k ? " set" : ""),
+      id:"intentcell-"+it.k, "data-hs":"h_intent_"+it.k });
+    cell.appendChild(el("rect", { "class":"hit", x:x, y:y, width:IW, height:IH }));
+    var art = el("g", { "class":"art" });
+    art.appendChild(el("path", { "class":"l1 f-card",
+      d:"M"+x+","+(y+1.4)+" L"+(x+IW)+","+y+" L"+(x+IW)+","+(y+IH-1.4)+" L"+x+","+(y+IH) + " Z" }));
+    art.appendChild(txt("tx-k", x+IW/2, y+46, it.nm, { "font-size":18, "text-anchor":"middle", "letter-spacing":".1em" }));
+    var ink = el("g", { "class":"ink" });
+    if(INTENT === it.k){
+      ink.appendChild(el("path", { "class":"l2 miter", d:"M"+(x+4)+","+(y+4)+" L"+(x+IW-4)+","+(y+4)+" L"+(x+IW-4)+","+(y+IH-4)+" L"+(x+4)+","+(y+IH-4)+" Z", style:"stroke:var(--zhu)" }));
+      ink.appendChild(txt("tx-z", x+IW/2, y+70, "已定", { "font-size":12, "text-anchor":"middle" }));
+    }
+    art.appendChild(ink);
+    cell.appendChild(art);
+    host.appendChild(cell);
+  });
+}
+function renderClose(){
+  renderPoseCells();
+  renderCardBox();
+  renderPlaceCells();
+  renderChopBox();
+  renderIntentCells();
+  var b1 = document.getElementById("hs_seal_pose");
+  if(b1) b1.classList.toggle("gone", F.f_a4_seal_pose || poseCount() < 8);
+  var b2 = document.getElementById("hs_seal_chop");
+  if(b2) b2.classList.toggle("gone", F.f_a4_seal_chop || (chopCount() < 3 || !INTENT));
+}
+function render(){
+  renderRoom();
+  renderClose();
+  renderInv();
+  if(F.f_a4_seal_pose && F.f_a4_seal_chop && !F.f_a4_done){
+    F.f_a4_done = true;
+    setTimeout(function(){ if(!PAPER_OPEN) showBook(); }, 460);
+  }
+  renderLedger();
+  saveDebounced();
+}
+
+/* ══ 17. 收束：一幀單 ═══════════════════════════════════════════════════ */
+function showBook(){
+  F.f_a4_book_seen = true;
+  var rows = [], i;
+  rows.push("笑態　");
+  for(i=0;i<8;i++){
+    rows.push("　" + POSE_L[i][0] + POSE_L[i][1] + "　" + (POSE[i] ? PEOPLE_BY[POSE[i]].full : "（空）"));
+  }
+  rows.push("");
+  rows.push("箸　" + PLACES.filter(function(p){ return CHOP[p.k]; }).map(function(p){
+    return p.nm + "＝" + CHOP_BY[CHOP[p.k]].nm;
+  }).join(" · "));
+  rows.push("用意　" + (INTENT ? INTENT_BY[INTENT].nm : "（空）"));
+  rows.push("");
+  rows.push("三個「原來如此」：");
+  rows.push("① 八個人是在一句話裡一個接一個寫完的 —— 姿就是句子，句子就是次序。");
+  rows.push("② 三雙箸的差別在材與飾：席上擺的是烏木三鑲銀；單拿給劉姥姥的是象牙鑲金；");
+  rows.push("　 賈母發話後換回的是烏木鑲銀。老太太一句「還不換了呢」，換掉的是「金」。");
+  rows.push("③ 這一次的「優待」不是賞 —— 商議的時候說的是「拿他取個笑儿」。");
+  docDoc([{ title:"一 幀 單", body: rows,
+    keys:["笑態","箸","取個笑儿","原來如此"] }], 0,
+    "第四十回 · 本底本逐字互證", "（單子是這一班寫的；憑據全在引文頁與各人名帖裡。）");
+  saveNow();
+}
+
+/* ══ 18. 校勘記 ═════════════════════════════════════════════════════════ */
+function noteEntries(){
+  var out = [];
+  out.push({ h:"一 · 字 形（第四十回全回）",
+    l:[ "本回底本字形混用，實測：氣 0 次／气 4 次；蟲 0 次／虫 3 次；",
+        "另有「离了坐位」的离、「史湘云」的云、「鳳姐儿」的儿、「取個笑儿」的儿。",
+        "引文一律照抄原字形：笑岔了气、大火燒了毛毛虫，都沒有規範化、沒有轉繁。",
+        "出處：本底本 L9801–L10167（第四十回全回）逐字統計。底本＝PG24264，非權威。" ] });
+  out.push({ h:"二 · 八 人 八 姿（L9961-L9966）",
+    l:[ "「上上下下都哈哈的大笑起來．史湘云撐不住，一口飯都噴了出來……」——",
+        "這是一句，八個人一個接一個寫完：湘云噴飯、黛玉伏桌、寶玉滾進懷裡、",
+        "賈母摟著叫心肝、王夫人指著說不出話、薛姨媽茶噴了探春一裙子、",
+        "探春的飯碗合在迎春身上、惜春離了坐位叫揉腸子。",
+        "按：底本 35 字硬折行，引文是先把 L9961–L9966 連行再斷句，其餘一字不動。",
+        "按：迎春只在「合在迎春身上」一句裡出現，畫面上作背景，不入八牌。" ] });
+  out.push({ h:"三 · 三 雙 箸（L9941 / L9952-L9954 / L9982）",
+    l:[ "「一把烏木三鑲銀箸」按席擺下 —— 這是席上通用的一檔。",
+        "「原是鳳姐和鴛鴦商議定了，單拿一雙老年四楞象牙鑲金的筷子与劉姥姥」——",
+        "這是單給她的一檔；商議的那一句是「咱們今儿就拿他取個笑儿」。",
+        "「忙收了過去，也照樣換上一雙烏木鑲銀的」—— 賈母發話後換回的一檔。",
+        "按：L9941 原文在「一把烏木三鑲銀箸」之後有一個缺字（作字面白方框），",
+        "後接「炊H位，按席擺下」；本幕只引到「一把烏木三鑲銀箸」與「按席擺下」，",
+        "缺字那一段（數量詞與擺法）沒有補、也沒有猜。" ] });
+  if(F.f_a4_done){
+    out.push({ h:"附 · 這一席所治：三個「原來如此」",
+      l:[ "① 姿就是句子，句子就是次序。",
+          "② 三雙箸的差別在材與飾；老太太一句「還不換了呢」，換掉的是「金」。",
+          "③ 這一次的「優待」不是賞 —— 商議時說的是「拿他取個笑儿」。",
+          "本班留下的話：「無徵不信；不假外求。」" ] });
+  }
+  return out;
+}
+var notePage = 0;
+function appendNotes(){
+  var es = noteEntries();
+  var i;
+  for(i=0;i<NOTE_LOG.length;i++){
+    if(NOTE_LOG[i] && NOTE_LOG[i].act === ACT_NO){ NOTE_LOG[i].n = es.length; NOTE_LOG[i].ts = Date.now(); return; }
+  }
+  NOTE_LOG.push({ act:ACT_NO, n:es.length, ts:Date.now() });
+  NOTE_LOG.sort(function(a,b){ return (a.act|0) - (b.act|0); });
+}
+function showNotes(){ notePage = 0; renderNotePage(); }
+function renderNotePage(){
+  var es = noteEntries();
+  if(!es.length){ say("校勘記還是空的。", false, 2400); return; }
+  if(notePage < 0) notePage = 0;
+  if(notePage > es.length-1) notePage = es.length-1;
+  var e = es[notePage];
+  PAPER_OPEN = "__notes";
+  if(READ.indexOf("__notes") < 0) READ.push("__notes");
+  clear(paperLayer);
+  var W = 740, H = 506, X = 600-W/2, Y = 360-H/2;
+  var g = el("g", { "class":"paper show", transform:"translate("+X+","+Y+")" });
+  g.appendChild(el("rect",{ x:-4, y:-4, width:W+8, height:H+8, rx:4, "class":"shadow" }));
+  g.appendChild(el("path",{ "class":"l1 f-card",
+    d:"M2,2.6 C200,1 560,3.2 738,1.6 L738,"+(H-1.6)+" C560,"+(H-3.4)+" 200,"+(H-0.8)+" 2,"+(H-2.4)+" Z" }));
+  g.appendChild(txt("paper-title", W/2, 46, "校 勘 記", { "text-anchor":"middle" }));
+  g.appendChild(txt("paper-sub", W/2, 70, "紅樓推理 · 劉姥姥進大觀園 · 牙牌令 · 第四幕所校", { "text-anchor":"middle" }));
+  g.appendChild(txt("tx-k", 40, 108, e.h, { "font-size":15 }));
+  var y = 140;
+  for(var i=0;i<e.l.length;i++){
+    wrap(e.l[i], 36).forEach(function(s){
+      g.appendChild(txt("tx-k", 52, y, s, { "font-size":13, fill:"var(--ink2)" })); y += 20;
+    });
+  }
+  var total = es.length, dw = 14;
+  for(i=0;i<total;i++){
+    g.appendChild(el("circle",{ cx:(W/2 - (total-1)*dw/2 + i*dw), cy:H-50, r:4,
+      fill:(i===notePage) ? "var(--zhu)" : "none",
+      stroke:(i===notePage) ? "none" : "var(--faint)", "stroke-width":1 }));
+  }
+  if(notePage > 0){
+    g.appendChild(txt("paper-close", 44, H-42, "◂ 前一條", { "font-size":15 }));
+    var hp = el("rect",{ x:34, y:H-60, width:100, height:32, fill:"transparent" });
+    hp.setAttribute("style","cursor:pointer");
+    hp.addEventListener("click", function(ev){ ev.stopPropagation(); notePage--; renderNotePage(); });
+    g.appendChild(hp);
+  }
+  if(notePage < total-1){
+    g.appendChild(txt("paper-close", W-44, H-42, "後一條 ▸", { "font-size":15, "text-anchor":"end" }));
+    var hn = el("rect",{ x:W-134, y:H-60, width:100, height:32, fill:"transparent" });
+    hn.setAttribute("style","cursor:pointer");
+    hn.addEventListener("click", function(ev){ ev.stopPropagation(); notePage++; renderNotePage(); });
+    g.appendChild(hn);
+  }
+  g.appendChild(txt("paper-sub langnote", 44, H-68, LANG_NOTE, { "font-size":12.5, fill:"var(--faint)" }));
+  g.appendChild(txt("paper-close", W/2, H-12, "點紙外任意處 · 收起", { "text-anchor":"middle" }));
+  g.addEventListener("click", function(ev){ ev.stopPropagation(); closePaper(); });
+  paperLayer.appendChild(g);
+  appendNotes(); saveNow();
+  syncLangNotes();
+  try{ localStorage.setItem(NOTES_KEY, JSON.stringify({ made:Date.now(), act:ACT_NO, entries:es.length })); }catch(e2){}
+}
+
+/* ══ 19. 熱點分派 ═══════════════════════════════════════════════════════ */
+var H = {
+  h_ledger_enter: function(){ showLedger(false); setCam("room"); say("入席。", false, 1800); render(); },
+  h_ledger_bridge: function(){ openBridge(); },
+  h_ledger_notes: function(){ showNotes(); },
+  h_bridge_go: function(){ closeBridge(); showLedger(false); setCam("room"); F.f_a4_bridge_read = true; render(); saveDebounced(); },
+  h_bridge_back: function(){ closeBridge(); showLedger(true); },
+  h_room_rule: function(){ showRule(0); },
+  h_room_src: function(){ showSrc(0); },
+  h_close_rule: function(){ showRule(0); },
+  h_close_src: function(){ showSrc(0); },
+  h_room_close: function(){ goClose(); say("近前看席。", false, 1800); render(); },
+  h_close_room: function(){ goRoom(); render(); },
+  h_seal_pose: function(){ sealPose(); },
+  h_seal_chop: function(){ sealChop(); }
+};
+PEOPLE.forEach(function(p){ H["h_look_"+p.k] = function(){ showPerson(p.k); }; });
+PEOPLE.forEach(function(p){ H["h_card_"+p.k] = function(){ pickCard(p.k); }; });
+for(var _i=0;_i<8;_i++){ (function(i){ H["h_slot_"+i] = function(){ tapPoseCell(i); }; })(_i); }
+PLACES.forEach(function(p){ H["h_place_"+p.k] = function(){ tapPlace(p.k); }; });
+CHOPS.forEach(function(c){ H["h_chop_"+c.k] = function(){ pickChop(c.k); }; });
+INTENTS.forEach(function(t){
+  H["h_intent_"+t.k] = function(){
+    if(INTENT === t.k){ unpickIntent(); return; }
+    pickIntent(t.k);
+  };
+});
+function onHotspot(id){
+  if(PAPER_OPEN){ closePaper(); }
+  var fn = H[id];
+  if(fn) fn();
+}
+
+/* ══ 20. 事件綁定 ══════════════════════════════════════════════════════ */
+function inActiveView(node){
+  var v = node.closest ? node.closest(".view") : null;
+  return !v || v.classList.contains("active");
+}
+stage.addEventListener("click", function(e){
+  var hs = e.target.closest ? e.target.closest(".hs") : null;
+  if(hs && hs.dataset.hs && !hs.classList.contains("gone")){
+    if(inActiveView(hs)) onHotspot(hs.dataset.hs);
+    return;
+  }
+  if(bridgeOpen()){ return; }
+  if(PAPER_OPEN){ closePaper(); return; }
+  if(LEDGER) return;
+  if(CAM !== "room") goRoom();
+});
+D("#bk").addEventListener("click", function(e){ e.stopPropagation(); showLedger(true); });
+(function(){
+  var lb = D("#langbtn");
+  if(!lb) return;
+  lb.addEventListener("click", function(e){ e.stopPropagation(); setLang(LANG === "s" ? "t" : "s"); });
+})();
+document.addEventListener("keydown", function(e){
+  if(e.key === "Escape"){
+    if(bridgeOpen()){ closeBridge(); return; }
+    if(LEDGER){ showLedger(false); return; }
+    if(PAPER_OPEN) closePaper(); else if(CAM !== "room") goRoom();
+  }
+  var k = (e.key||"").toLowerCase();
+  if(k === "b") showLedger(!LEDGER);
+  if(k === "1") setCam("room");
+  if(k === "2") setCam("close");
+});
+
+/* ══ 21. 啟動 ═══════════════════════════════════════════════════════════ */
+function boot(){
+  renderRoomFigs();
+  var restored = false;
+  var AUTO = (location.hash.match(/auto=([a-z0-9]+)/i)||[])[1];
+  var FRESH = /fresh/.test(location.hash);
+  if(FRESH){
+    try{ localStorage.removeItem(SAVE_KEY); localStorage.removeItem(NOTES_KEY); }catch(e){}
+    resetState(); DONE.length = 0; NOTE_LOG.length = 0;
+  }
+  else restored = load();
+  if(!restored) resetState();
+  if(AUTO) resetAct4();
+  F.f_a4_seen = true;
+  render();
+  setCam(CAM || "room");
+  syncModal();
+  setLang(LANG, true);
+  if(AUTO){ showLedger(true); }
+  var PROBE = (location.search.match(/[?&]probe=([a-z0-9_]+)/i)||[])[1];
+  if(/[?&]still=1/.test(location.search)){
+    var st = document.createElement("style");
+    st.textContent = "*{transition-duration:0s!important;animation-delay:0s!important}";
+    document.head.appendChild(st);
+  }
+  function allLook(){
+    PEOPLE.forEach(function(p){ LOOK[p.k] = 1; F["f_a4_look_"+p.k] = true; });
+  }
+  function placeAllPose(){
+    for(var i=0;i<8;i++){ var k = POSE_TO[i]; POSE[i] = k; F["f_a4_pose_"+k] = true; }
+  }
+  function chopAll(){
+    PLACES.forEach(function(p){ CHOP[p.k] = CHOP_TO[p.k]; F["f_a4_chop_"+p.k] = true; });
+    INTENT = INTENT_ANSWER; F["f_a4_intent_"+INTENT_ANSWER] = true;
+  }
+  if(PROBE){
+    if(PROBE === "room"){ showLedger(false); setCam("room"); render(); }
+    else if(PROBE === "close"){ showLedger(false); setCam("close"); render(); }
+    else if(PROBE === "rule"){ showLedger(false); showRule(0); }
+    else if(PROBE === "rule2"){ showLedger(false); showRule(1); }
+    else if(PROBE === "src1"){ showLedger(false); showSrc(0); }
+    else if(PROBE === "src2"){ showLedger(false); showSrc(1); }
+    else if(PROBE === "src3"){ showLedger(false); showSrc(2); }
+    else if(PROBE === "notes"){ showLedger(false); showNotes(); }
+    else if(PROBE === "ledger"){ showLedger(true); }
+    else if(PROBE === "bridge"){ showLedger(false); setCam("room"); render(); openBridge(); }
+    else if(PROBE === "person1"){ showLedger(false); setCam("room"); render(); showPerson("xiangyun"); }
+    else if(PROBE === "person2"){ showLedger(false); setCam("room"); render(); showPerson("daiyu"); }
+    else if(PROBE === "person3"){ showLedger(false); setCam("room"); render(); showPerson("bao"); }
+    else if(PROBE === "person4"){ showLedger(false); setCam("room"); render(); showPerson("jiamu"); }
+    else if(PROBE === "person5"){ showLedger(false); setCam("room"); render(); showPerson("wang"); }
+    else if(PROBE === "person6"){ showLedger(false); setCam("room"); render(); showPerson("xue"); }
+    else if(PROBE === "person7"){ showLedger(false); setCam("room"); render(); showPerson("tanchun"); }
+    else if(PROBE === "person8"){ showLedger(false); setCam("room"); render(); showPerson("xichun"); }
+    else if(PROBE === "pose1"){ showLedger(false); setCam("close"); POSE[0] = "xiangyun"; F.f_a4_pose_xiangyun = true; render(); }
+    else if(PROBE === "posehalf"){ showLedger(false); setCam("close");
+      ["xiangyun","daiyu","bao","jiamu"].forEach(function(k){ POSE[POSE_TO.indexOf(k)] = k; F["f_a4_pose_"+k] = true; }); render(); }
+    else if(PROBE === "posesealed"){ showLedger(false); setCam("close"); placeAllPose(); F.f_a4_seal_pose = true; D("#seal-pose").classList.add("on"); render(); }
+    else if(PROBE === "chophalf"){ showLedger(false); setCam("close"); chopAll();
+      delete CHOP.liu_place; F.f_a4_chop_liu_place = false; render(); }
+    else if(PROBE === "chopsealed"){ showLedger(false); setCam("close"); chopAll(); F.f_a4_seal_chop = true; D("#seal-chop").classList.add("on"); render(); }
+    else if(PROBE === "alllook"){ showLedger(false); allLook(); setCam("room"); render(); }
+    else if(PROBE === "done"){
+      showLedger(false); placeAllPose(); F.f_a4_seal_pose = true; D("#seal-pose").classList.add("on");
+      chopAll(); F.f_a4_seal_chop = true; D("#seal-chop").classList.add("on");
+      setCam("close"); render(); showBook();
+    }
+  }
+  requestAnimationFrame(function(){ D("#boot").classList.add("gone"); });
+  if(AUTO) runAuto(AUTO);
+  else if(restored) say("接著上次的地方。", false, 2400);
+}
+
+/* ══ 22. 自動走通（頁內自測；**不當命中判據** —— 命中另由真鼠標走通驗）═══
+   這一支只用 MouseEvent 派發，繞過瀏覽器命中判定，只證明「邏輯鏈能通」。
+   它另有一個用途：跨幕測試要 act4 也在同一個桶裡走完一次。 */
+var CLICKLOG = [];
+function click(hsId){
+  var n = document.querySelector('.hs[data-hs="'+hsId+'"]');
+  if(!n){ if(CLICKLOG.length<80) CLICKLOG.push(hsId+":nohs"); return false; }
+  if(n.classList.contains("gone")){ if(CLICKLOG.length<80) CLICKLOG.push(hsId+":gone"); return false; }
+  if(!inActiveView(n)){ if(CLICKLOG.length<80) CLICKLOG.push(hsId+":notactive"); return false; }
+  var hit = n.querySelector(".hit") || n;
+  hit.dispatchEvent(new MouseEvent("click", {bubbles:true, cancelable:true}));
+  return true;
+}
+function clickEl(sel){
+  var n = document.querySelector(sel);
+  if(!n) return false;
+  n.dispatchEvent(new MouseEvent("click", {bubbles:true, cancelable:true}));
+  return true;
+}
+function w(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+async function runAuto(stop){
+  var log = [];
+  CLICKLOG.length = 0;
+  function step(name, ok){ log.push(name + "=" + (ok ? "ok" : "MISS")); }
+  function report(){
+    document.title = "SELFTEST::ACT4::" + log.join(" | ")
+      + " || FLAGS[" + allFlagKeys().filter(function(k){ return F[k]; }).join(",") + "]"
+      + " || misplaced=" + MIS
+      + " || INV[" + INV.join(",") + "] || CAM=" + CAM
+      + " || POSE[" + [0,1,2,3,4,5,6,7].map(function(i){ return POSE[i]||"-"; }).join(",") + "]"
+      + " || CHOP[" + PLACES.filter(function(p){ return CHOP[p.k]; }).map(function(p){ return p.k+":"+CHOP[p.k]; }).join(",") + "]"
+      + " || INTENT[" + (INTENT||"-") + "]"
+      + " || READ[" + READ.join(",") + "]"
+      + " || DONE[" + DONE.join(",") + "]"
+      + " || NOTES[" + NOTE_LOG.map(function(x){ return "act" + x.act + ":" + x.n; }).join(",") + "]"
+      + " || CLICK[" + CLICKLOG.join(" ; ") + "]";
+    document.body.setAttribute("data-selftest", log.join(" | "));
+  }
+  try{
+    if(stop === "ledger"){ step("停在司命簿", LEDGER); report(); return; }
+    step("0_讀幕間", click("h_ledger_bridge")); await w(320);
+    step("1_收起幕間", click("h_bridge_go")); await w(340);
+    if(stop === "bridge"){ step("停在幕間", true); report(); return; }
+    step("2_入席", click("h_ledger_enter")); await w(340);
+    step("3_近前看席", click("h_room_close")); await w(360);
+    if(stop === "close"){ step("停在近景", CAM === "close"); report(); return; }
+    /* 鏈①：前七姿 —— 取牌 → 插進它那一框 */
+    for(var i=0;i<7;i++){
+      var k = POSE_TO[i];
+      (function(kk, ii){
+        step("4" + ii + "_取牌_" + kk, (function(){ click("h_card_"+kk); return SEL === "it_card_"+kk; })());
+      })(k, i);
+      await w(160);
+      (function(kk, ii){
+        step("5" + ii + "_入框_" + kk, (function(){ click("h_slot_"+ii); return POSE[ii] === kk; })());
+      })(k, i);
+      await w(200);
+    }
+    /* 錯法：惜春的名牌往「摀著寶玉叫心肝」那一框上放（那一框是賈母的）*/
+    step("6a_取惜春牌", (function(){ click("h_card_xichun"); return SEL === "it_card_xichun"; })()); await w(180);
+    step("6b_取回第三框的牌", (function(){ click("h_slot_3"); return !POSE[3]; })()); await w(260);
+    step("6c_再插回第三框", (function(){ click("h_card_jiamu"); click("h_slot_3"); return POSE[3] === "jiamu"; })()); await w(280);
+    step("7_惜春歸第八框", (function(){ click("h_card_xichun"); return SEL === "it_card_xichun"; })()); await w(160);
+    step("7b_入第八框", (function(){ click("h_slot_7"); return POSE[7] === "xichun"; })()); await w(220);
+    step("8_八牌齊", poseCount() === 8);
+    step("9_笑態用印", (function(){ click("h_seal_pose"); return !!F.f_a4_seal_pose; })()); await w(460);
+    if(stop === "posesealed"){ step("停在笑態用印", !!F.f_a4_seal_pose); report(); return; }
+    /* 鏈②：先落錯一雙（象牙鑲金往「按席擺下」那一處）*/
+    step("10a_取象牙鑲金", (function(){ click("h_chop_xiangya"); return SEL === "it_chop_xiangya"; })()); await w(180);
+    step("10b_錯落按席擺下", (function(){ click("h_place_xi_place"); return MIS >= 1 && !CHOP.xi_place; })()); await w(420);
+    step("11a_取烏木三鑲銀", (function(){ click("h_chop_wumu3"); return SEL === "it_chop_wumu3"; })()); await w(160);
+    step("11b_落按席擺下", (function(){ click("h_place_xi_place"); return CHOP.xi_place === "wumu3"; })()); await w(200);
+    step("12a_取消象牙金", (function(){ click("h_chop_xiangya"); return SEL === "it_chop_xiangya"; })()); await w(160);
+    step("12b_落單拿与劉姥姥", (function(){ click("h_place_liu_place"); return CHOP.liu_place === "xiangya"; })()); await w(200);
+    step("13a_取烏木鑲銀", (function(){ click("h_chop_wumuyin"); return SEL === "it_chop_wumuyin"; })()); await w(160);
+    step("13b_落也照樣換上", (function(){ click("h_place_huan_place"); return CHOP.huan_place === "wumuyin"; })()); await w(200);
+    step("14_三雙齊", chopCount() === 3);
+    /* 用意：先錯取「抬高」，再取「取笑」*/
+    step("15a_錯取抬高", (function(){ click("h_intent_taigao"); return MIS >= 2 && !INTENT; })()); await w(420);
+    step("15b_取笑", (function(){ click("h_intent_quxiao"); return INTENT === "quxiao"; })()); await w(240);
+    step("16_箸用印", (function(){ click("h_seal_chop"); return !!F.f_a4_seal_chop; })()); await w(900);
+    step("17_一幀單已出", PAPER_OPEN !== null);
+    step("18_收起一幀單", (function(){ closePaper(); return PAPER_OPEN === null; })()); await w(200);
+    step("19_收束成立", !!F.f_a4_done);
+    step("20_回司命簿", (function(){ clickEl("#bk"); return LEDGER; })()); await w(360);
+    step("21_校勘記", (function(){ click("h_ledger_notes"); return PAPER_OPEN === "__notes"; })()); await w(440);
+    if(stop === "notes"){ report(); return; }
+    closePaper(); await w(220);
+    step("22_再入席", click("h_ledger_enter")); await w(340);
+    step("23_本幕已畢", !!F.f_a4_done);
+  }catch(err){ log.push("ERR=" + (err && err.message)); }
+  report();
+}
+
+/* ══ 23. 對外的只讀探針 ═════════════════════════════════════════════════ */
+window.__dd = { F:function(){ return F; }, INV:function(){ return INV; }, DONE:function(){ return DONE; },
+  CAM:function(){ return CAM; }, POSE:function(){ return POSE; }, CHOP:function(){ return CHOP; },
+  INTENT:function(){ return INTENT; }, LOOK:function(){ return LOOK; }, MIS:function(){ return MIS; },
+  judgePose:judgePose, judgeChop:judgeChop, judgeIntent:judgeIntent,
+  POSE_TO:POSE_TO, CHOP_TO:CHOP_TO, INTENT_ANSWER:INTENT_ANSWER,
+  click:click, setCam:setCam, auto:runAuto, goRoom:goRoom, goClose:goClose,
+  closePaper:closePaper, inActiveView:inActiveView,
+  state:function(){ return { F:F, INV:INV, CAM:CAM, SEL:SEL, DONE:DONE, READ:READ,
+    POSE:POSE, CHOP:CHOP, INTENT:INTENT, SEAT:POSE, KIN:CHOP, LOOK:LOOK, MIS:MIS,
+    NOTES:NOTE_LOG, PAPER_id:PAPER_OPEN }; } };
+window.showLedger = showLedger;
+window.render = render;
+window.goRoom = goRoom; window.goClose = goClose; window.closePaper = closePaper;
+window.CAM = function(){ return CAM; };
+window.POSE = function(){ return POSE; };
+window.CHOP = function(){ return CHOP; };
+
+if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+else boot();
+})();
+</script>
+</body>
+</html>
