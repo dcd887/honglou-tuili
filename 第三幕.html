@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>紅樓推理 · 抄檢大觀園 · 一夜 · 第三幕</title>
 <link rel="icon" href="favicon.ico">
+<link rel="icon" href="favicon.ico">
 <style>
   /* ══ 色板：與前兩幕逐字相同 —— 9 個 token + 既有平塗舊木 #b9a88c ══
      本幕實機只用到 8 個值：paper / paper2 / card / ink / ink2 / faint / zhu / #b9a88c
@@ -210,6 +211,14 @@
   }
   #hintpanel button:hover{color:var(--zhu);border-color:var(--zhu)}
   #hintpanel .cnt{color:var(--faint);font-size:12px;margin-right:auto;letter-spacing:.06em}
+
+  /* ══ v1.1 物件可读性（A+B）：背包格悬停名 + 常驻「手上」 ══ */
+  .hand{
+    margin-left:auto; margin-right:8px; align-self:center;
+    font-family:"Kaiti SC","STKaiti","KaiTi",serif; font-size:13px; letter-spacing:.08em;
+    color:var(--zhu); white-space:nowrap; max-width:46vw; overflow:hidden; text-overflow:ellipsis;
+  }
+  #slots .slot[title]{cursor:pointer}
 </style>
 </head>
 <body>
@@ -765,8 +774,30 @@ function take(id){
 function itemLabel(id){
   if(/^it_yard_/.test(id)){ var y = YARD_BY[id.slice(8)]; return "院牌　" + (y ? y.nm : id); }
   if(/^it_sign_/.test(id)){ var s = SIGN_BY[id.slice(8)]; return "簽　" + (s ? s.nm : id); }
-  return id;
+  /* v1.1 A 兜底：绝不把原始 id（it_lot_bao）暴露给玩家 */
+  return "物件　" + String(id).replace(/^it_/, "").replace(/_/g, " ");
 }
+
+/* v1.1 物件可读性 B：常驻「手上：X」——SEL 变化不必依赖 say() 那条 3 秒提示 */
+function _updateHand(){
+  try{
+    if(typeof slotsEl === "undefined" || !slotsEl) return;
+    var host = slotsEl.parentNode;
+    if(!host) return;
+    var el = document.getElementById("handlbl");
+    if(!el){
+      el = document.createElement("span");
+      el.id = "handlbl";
+      el.className = "hand";
+      host.appendChild(el);
+    }
+    var txt = SEL ? ("手上：" + itemLabel(SEL)) : "";
+    el.textContent = txt;
+    el.style.display = txt ? "" : "none";
+  }catch(e){}
+}
+setInterval(_updateHand, 500);
+
 function renderInv(){
   clear(slotsEl);
   for(var i=0;i<INV.length;i++){
@@ -775,6 +806,8 @@ function renderInv(){
       d.className = "slot has" + (SEL===id ? " sel" : "");
       d.setAttribute("data-slot", idx);
       d.setAttribute("data-item", id);
+      d.title = itemLabel(id);                      /* v1.1 A：悬停即见名字 */
+      d.setAttribute("aria-label", itemLabel(id));   /* v1.1 A：读屏可念 */
       d.innerHTML = '<svg viewBox="-4 -2 108 108" preserveAspectRatio="xMidYMid meet">'
         + '<use href="#sym_card"/></svg><span class="under"></span>';
       d.addEventListener("click", function(e){
@@ -797,6 +830,8 @@ function renderInv(){
 
 /* ══ 9. 音效（WebAudio 合成，不引音頻文件）═════════════════════════════ */
 var AC = null, SND = true;
+  _updateHand();
+
 function sfx(kind){
   if(!SND) return;
   try{
