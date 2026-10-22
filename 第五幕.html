@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>紅樓推理 · 秦可卿之死 · 靈前 · 第五幕</title>
 <link rel="icon" href="favicon.ico">
+<link rel="icon" href="favicon.ico">
 <style>
   /* ══ 色板：與前四幕逐字相同 —— 9 個 token + 既有平塗舊木 #b9a88c ══
      本幕實機只用到 8 個值：paper / paper2 / card / ink / ink2 / faint / zhu / #b9a88c
@@ -206,6 +207,14 @@
   }
   #hintpanel button:hover{color:var(--zhu);border-color:var(--zhu)}
   #hintpanel .cnt{color:var(--faint);font-size:12px;margin-right:auto;letter-spacing:.06em}
+
+  /* ══ v1.1 物件可读性（A+B）：背包格悬停名 + 常驻「手上」 ══ */
+  .hand{
+    margin-left:auto; margin-right:8px; align-self:center;
+    font-family:"Kaiti SC","STKaiti","KaiTi",serif; font-size:13px; letter-spacing:.08em;
+    color:var(--zhu); white-space:nowrap; max-width:46vw; overflow:hidden; text-overflow:ellipsis;
+  }
+  #slots .slot[title]{cursor:pointer}
 </style>
 </head>
 <body>
@@ -859,10 +868,34 @@ function say(t, zhu, ms){
 function give(id){ if(INV.indexOf(id) < 0) INV.push(id); renderInv(); saveDebounced(); }
 function take(id){ var i = INV.indexOf(id); if(i >= 0) INV.splice(i, 1); renderInv(); saveDebounced(); }
 function itemLabel(id){
-  if(/^it_card_/.test(id)){ var p = PEOPLE_BY[id.slice(8)]; return p ? p.full : id; }
-  if(/^it_sign_/.test(id)){ var s = SIGN_BY[id.slice(8)]; return s ? s.l[0] : id; }
-  return id;
+  /* v1.1 A：补类型前缀——原来只回人名，背包悬停只看到「賈蓉」，看不出这是牌还是签 */
+  if(/^it_card_/.test(id)){ var p = PEOPLE_BY[id.slice(8)]; return "人物牌　" + (p ? p.full : id.slice(8)); }
+  if(/^it_sign_/.test(id)){ var s = SIGN_BY[id.slice(8)]; return "籤　" + (s ? s.l[0] : id.slice(8)); }
+  if(/^it_page_/.test(id)){ return "判詞頁　" + String(id.slice(8)).replace(/_/g, " "); }
+  /* v1.1 A 兜底：绝不把原始 id（it_lot_bao）暴露给玩家 */
+  return "物件　" + String(id).replace(/^it_/, "").replace(/_/g, " ");
 }
+
+/* v1.1 物件可读性 B：常驻「手上：X」——SEL 变化不必依赖 say() 那条 3 秒提示 */
+function _updateHand(){
+  try{
+    if(typeof slotsEl === "undefined" || !slotsEl) return;
+    var host = slotsEl.parentNode;
+    if(!host) return;
+    var el = document.getElementById("handlbl");
+    if(!el){
+      el = document.createElement("span");
+      el.id = "handlbl";
+      el.className = "hand";
+      host.appendChild(el);
+    }
+    var txt = SEL ? ("手上：" + itemLabel(SEL)) : "";
+    el.textContent = txt;
+    el.style.display = txt ? "" : "none";
+  }catch(e){}
+}
+setInterval(_updateHand, 500);
+
 /* 物件說明：物品欄點一下，就告訴你這一件是什麼、從哪來、拿它做什麼。
    資料只取自本幕既有表（PEOPLE / SIGNS），不新造文案。 */
 function itemInfo(id){
@@ -902,6 +935,8 @@ function renderInv(){
     var d = document.createElement("div");
     d.className = "slot has" + (SEL === id ? " sel" : "");
     d.setAttribute("data-inv", id);
+    d.title = itemLabel(id);                      /* v1.1 A：悬停即见名字 */
+    d.setAttribute("aria-label", itemLabel(id));   /* v1.1 A：读屏可念 */
     var sv = "<svg viewBox=\"0 0 100 100\"><use href=\"#" + (/^it_card_/.test(id) ? "sym_card" : "sym_stick") + "\"/></svg>";
     d.innerHTML = sv + "<div class=\"under\"></div>";
     d.addEventListener("click", function(e){
@@ -922,6 +957,8 @@ function renderInv(){
 }
 /* ══ 9. 相機（兩個圖形視圖；紙頁不切屏）═════════════════════════════════ */
 var LEDGER = true;
+  _updateHand();
+
 function setCam(which){
   CAM = (which === "close") ? "close" : "room";
   D("#view-room").classList.toggle("active", CAM === "room");
