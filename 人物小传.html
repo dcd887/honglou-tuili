@@ -60,6 +60,17 @@ footer{flex:0 0 auto; display:flex; align-items:center; justify-content:space-be
 footer .hint{flex:1 1 auto; min-width:0; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 footer a{flex:0 0 auto; color:var(--zhu); text-decoration:none; letter-spacing:.06em}
 footer a:hover{color:var(--ink)}
+
+  /* v0.20.13 手机端可读性：1200x720 舞台等比缩放后字太小，竖屏时给一条提示（不改玩法） */
+  @media (max-width: 760px) and (orientation: portrait) {
+    body::before {
+      content: "建议横屏或使用电脑游玩，字体更清晰";
+      position: fixed; left: 0; right: 0; top: 0; z-index: 9999;
+      padding: 6px 8px; text-align: center;
+      background: #a63a2a; color: #f3ecdf; font-size: 12px; letter-spacing: .04em;
+    }
+    body { padding-top: 26px; }
+  }
 </style>
 </head>
 <body>
