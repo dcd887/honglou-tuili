@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>紅樓推理 · 元妃省親 · 大觀園 · 第二幕</title>
 <link rel="icon" href="favicon.ico">
+<link rel="icon" href="favicon.ico">
 <style>
   /* ══ 色板：與第一幕逐字相同 —— 9 個 token + 既有平塗舊木 #b9a88c ══
      本幕實機只用到 8 個值：paper / paper2 / card / ink / ink2 / faint / zhu / #b9a88c
@@ -179,6 +180,36 @@
     }
     body { padding-top: 26px; }
   }
+
+  /* ══ 三層提示（v1.1）：只用既有 9 個 token，不新增顏色 ══ */
+  #hintbtn{
+    position:fixed;right:12px;bottom:74px;z-index:60;
+    padding:6px 12px;cursor:pointer;
+    font-family:"Kaiti SC","STKaiti","KaiTi",serif;font-size:13px;letter-spacing:.1em;
+    color:var(--ink2);background:var(--card);border:1px solid var(--line2);border-radius:2px;
+  }
+  #hintbtn:hover{color:var(--zhu);border-color:var(--zhu)}
+  #hintbtn:focus-visible{outline:1px solid var(--zhu);outline-offset:2px}
+  #hintpanel{
+    position:fixed;right:12px;bottom:112px;z-index:61;
+    width:min(440px,calc(100vw - 24px));max-height:52vh;overflow:auto;
+    background:var(--card);border:1px solid var(--line2);border-radius:2px;
+    box-shadow:0 6px 24px rgba(42,38,34,.14);
+    font-family:"Songti SC","STSong",Georgia,"Noto Serif SC",serif;
+    color:var(--ink);padding:12px 14px;display:none;
+  }
+  #hintpanel.on{display:block}
+  #hintpanel h4{margin:0 0 8px;font-size:13px;letter-spacing:.14em;color:var(--zhu);font-weight:600}
+  #hintpanel .lvl{margin:0 0 10px;font-size:13px;line-height:1.85;color:var(--ink2);white-space:pre-wrap}
+  #hintpanel .lvl b{color:var(--ink);font-weight:600}
+  #hintpanel .lvl.answer{color:var(--ink)}
+  #hintpanel .acts{display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--line);padding-top:10px}
+  #hintpanel button{
+    padding:5px 12px;cursor:pointer;font-family:inherit;font-size:12px;letter-spacing:.08em;
+    color:var(--ink2);background:var(--paper2);border:1px solid var(--line2);border-radius:2px;
+  }
+  #hintpanel button:hover{color:var(--zhu);border-color:var(--zhu)}
+  #hintpanel .cnt{color:var(--faint);font-size:12px;margin-right:auto;letter-spacing:.06em}
 </style>
 </head>
 <body>
@@ -1834,5 +1865,67 @@ if(document.readyState === "loading") document.addEventListener("DOMContentLoade
 else boot();
 })();
 </script>
+
+  <button id="hintbtn" type="button" aria-controls="hintpanel" aria-expanded="false">提示</button>
+  <div id="hintpanel" role="dialog" aria-label="提示">
+    <h4>提示 · 第2幕 · 元妃省親</h4>
+    <div id="hintbody"></div>
+    <div class="acts">
+      <span class="cnt" id="hintcnt"></span>
+      <button type="button" id="hintmore">看第一級提示</button>
+      <button type="button" id="hintclose">收起</button>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var KEY = "honglou.hints.v1", ACT = 2;
+    var L = [
+      {k:"L1（方向）", v:"省親之夜，滿園題詠、眾人序位。先讀第 18 回元妃入園一段，看誰立於何位、誰先題詠——位次皆由身份而定。"},
+      {k:"L2（定位）", v:"第 18 回中段，元妃命諸姊妹各題一匾一詩，題詠與座次皆按尊卑。園名「大觀」即出自元妃此夜題詩，注意這句的出處。"},
+      {k:"L3（本幕答案）", v:"第 18 回：元妃題「天上人間諸景備，芳園應錫大觀名」，園名由此而定；座次以元妃為尊，次及賈母、王夫人，姊妹按序題詠。位次即尊卑，尊卑即身份。"}
+    ];
+    function readAll(){
+      try{ var o = JSON.parse(localStorage.getItem(KEY)||"{}"); return (o && typeof o==="object") ? o : {}; }catch(e){ return {}; }
+    }
+    function writeAll(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); }catch(e){} }
+    var lv = +(readAll()[ACT] || 0);
+    var btn = document.getElementById("hintbtn"),
+        panel = document.getElementById("hintpanel"),
+        body = document.getElementById("hintbody"),
+        cnt = document.getElementById("hintcnt"),
+        more = document.getElementById("hintmore"),
+        closeBtn = document.getElementById("hintclose");
+    function paint(){
+      var html = "";
+      for(var i=0;i<lv;i++){
+        html += '<p class="lvl' + (i===2?' answer':'') + '"><b>' + L[i].k + '</b><br>' + L[i].v + '</p>';
+      }
+      body.innerHTML = html;
+      cnt.textContent = lv ? ("已展開 " + lv + "/3") : "卡住了再點一級";
+      more.textContent = lv >= 3 ? "答案已顯示" : (lv === 0 ? "看第一級提示" : "再提示一級");
+      more.disabled = lv >= 3;
+      more.style.opacity = lv >= 3 ? ".45" : "1";
+      btn.setAttribute("aria-expanded", panel.classList.contains("on") ? "true" : "false");
+    }
+    function open(){ panel.classList.add("on"); paint(); }
+    function hide(){ panel.classList.remove("on"); btn.setAttribute("aria-expanded","false"); }
+    btn.addEventListener("click", function(){
+      if(panel.classList.contains("on")){ hide(); return; }
+      if(lv === 0){ lv = 1; var o = readAll(); o[ACT] = 1; writeAll(o); }
+      open();
+    });
+    more.addEventListener("click", function(){
+      if(lv >= 3) return;
+      lv++; var o = readAll(); o[ACT] = lv; writeAll(o); paint();
+    });
+    closeBtn.addEventListener("click", hide);
+    document.addEventListener("keydown", function(e){
+      if(e.key === "h" || e.key === "H"){ if(panel.classList.contains("on")){ hide(); } else { if(lv===0){ lv=1; var o=readAll(); o[ACT]=1; writeAll(o); } open(); } }
+      if(e.key === "Escape") hide();
+    });
+    paint();
+  })();
+  </script>
+
 </body>
 </html>
