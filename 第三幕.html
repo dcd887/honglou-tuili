@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>紅樓推理 · 抄檢大觀園 · 一夜 · 第三幕</title>
 <link rel="icon" href="favicon.ico">
-<link rel="icon" href="favicon.ico">
 <style>
   /* ══ 色板：與前兩幕逐字相同 —— 9 個 token + 既有平塗舊木 #b9a88c ══
      本幕實機只用到 8 個值：paper / paper2 / card / ink / ink2 / faint / zhu / #b9a88c
@@ -1814,5 +1813,21 @@ else boot();
   })();
   </script>
 
+<script>
+/* H5：首次進入提示（僅手機豎屏顯示一次，6 秒後自動消失，不阻塞舞台）*/
+(function(){
+  try{
+    var K="honglou.mobilehint.v1";
+    if(localStorage.getItem(K)) return;
+    if(!window.matchMedia("(max-width:760px) and (orientation:portrait)").matches) return;
+    localStorage.setItem(K,"1");
+    var d=document.createElement("div");
+    d.textContent="建議電腦或橫屏遊玩 · 進度自動保存";
+    d.style.cssText="position:fixed;left:0;right:0;top:26px;z-index:9998;padding:6px 8px;text-align:center;background:#a63a2a;color:#f3ecdf;font-size:12px;letter-spacing:.04em";
+    document.body.appendChild(d);
+    setTimeout(function(){ if(d.parentNode) d.parentNode.removeChild(d); },6000);
+  }catch(e){}
+})();
+</script>
 </body>
 </html>
