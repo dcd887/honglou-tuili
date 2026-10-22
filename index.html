@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <title>紅樓推理 · 五幕合卷</title>
 <link rel="icon" href="favicon.ico">
-<link rel="icon" href="favicon.ico">
 <style>
   /* ══ 色板：與五幕逐字同一套（9 token + 既有平塗 #b9a88c）══════════════
      本頁只用其中 8 個取值的組合：paper/paper2/card/ink/ink2/faint/zhu/line */
@@ -52,12 +51,17 @@
   .row .go{flex:0 0 auto; font-size:12.5px; color:var(--zhu); letter-spacing:.08em}
 
   footer{flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px;
+         flex-wrap:wrap; row-gap:4px;
          border-top:1px solid var(--line); padding-top:6px; font-size:11.5px; color:var(--faint)}
-  footer .hint{color:var(--ink2)}
-  #next{font:inherit; font-size:12.5px; color:var(--paper); background:var(--zhu); border:none;
-        padding:4px 12px; cursor:pointer; letter-spacing:.08em}
+  footer .hint{flex:1 1 auto; min-width:0; color:var(--ink2)}
+  #next,#share{font:inherit; font-size:12.5px; padding:4px 12px; cursor:pointer; letter-spacing:.08em}
+  #next{color:var(--paper); background:var(--zhu); border:none}
   #next:hover{background:var(--ink)}
   #next[disabled]{background:var(--line2); color:var(--paper2); cursor:default}
+  /* 分享卡：沿用既有色板，不新增顏色 */
+  #share{color:var(--zhu); background:var(--card); border:1px solid var(--line2)}
+  #share:hover{background:var(--paper2); border-color:var(--faint)}
+  #share[disabled]{color:var(--faint); border-color:var(--line); cursor:default}
 </style>
 </head>
 <body>
@@ -73,6 +77,7 @@
   <footer>
     <div class="hint" id="hint">選一幕入內；也可以按 1–5 鍵。</div>
     <a href="人物小传.html" style="color:var(--zhu);text-decoration:none;letter-spacing:.06em">人物小傳</a>
+    <button id="share" type="button">生成分享卡</button>
     <button id="next" type="button">續上一次</button>
   </footer>
 </div>
@@ -148,7 +153,7 @@ var nxt = nextAct();
 if(done[5]){
   btn.textContent = "重看第五幕";
   btn.removeAttribute("disabled");
-  hint.textContent = "五幕都已收束 —— 可以任意重看某一幕。";
+  hint.textContent = "五幕都已收束 —— 可以任意重看某一幕。卡在哪一幕？可在作品頁留言告訴作者。";
 }else if(done[nxt] || (cur === 0 && !Object.keys(done).length)){
   btn.textContent = "從第一幕開始";
   hint.textContent = "選一幕入內；也可以按 1–5 鍵。";
@@ -160,7 +165,78 @@ btn.addEventListener("click", function(){
   location.href = ACTS[nxt - 1].file;
 });
 
-/* ══ 5. 鍵盤 1–5 ═════════════════════════════════════════════════════ */
+/* ══ 5. 分享卡：1200×630 PNG，純 canvas，不引外部依賴 ═══════════════════ */
+var shareBtn = document.getElementById("share");
+var shareCnt = Object.keys(done).length;
+if(!shareCnt) shareBtn.disabled = true;
+
+shareBtn.addEventListener("click", function(){
+  try{
+    var W = 1200, H = 630, PAD = 72;
+    var SERIF = '"Songti SC","STSong",Georgia,"Noto Serif SC",serif';
+    var c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    var g = c.getContext("2d");
+
+    g.fillStyle = "#f3ecdf"; g.fillRect(0, 0, W, H);          /* --paper */
+    g.strokeStyle = "#d3c8b4"; g.lineWidth = 2;               /* --line  */
+    g.strokeRect(28, 28, W - 56, H - 56);
+    g.textBaseline = "top";
+
+    g.fillStyle = "#2a2622"; g.font = "600 46px " + SERIF;    /* --ink   */
+    g.fillText("紅樓推理", PAD, 70);
+    g.fillStyle = "#5c554b"; g.font = "20px " + SERIF;        /* --ink2  */
+    g.fillText("五幕合卷 · 底本 程甲本（PG24264）· 單底本，不用脂本", PAD, 134);
+
+    g.textAlign = "right";
+    g.fillStyle = "#a63a2a"; g.font = "600 28px " + SERIF;    /* --zhu   */
+    g.fillText("已收束 " + shareCnt + " / 5 幕", W - PAD, 84);
+    g.textAlign = "left";
+
+    g.strokeStyle = "#d3c8b4"; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(PAD, 190); g.lineTo(W - PAD, 190); g.stroke();
+
+    var y = 226;
+    for(var i = 0; i < ACTS.length; i++){
+      var a = ACTS[i], ok = !!done[a.n];
+      g.beginPath(); g.arc(PAD + 8, y + 16, 8, 0, Math.PI * 2);
+      if(ok){ g.fillStyle = "#a63a2a"; g.fill(); }
+      else { g.strokeStyle = "#8d8577"; g.lineWidth = 2; g.stroke(); }  /* --faint */
+
+      g.fillStyle = "#8d8577"; g.font = "22px " + SERIF;
+      g.fillText(NUM[a.n], PAD + 34, y + 2);
+
+      g.fillStyle = ok ? "#2a2622" : "#5c554b";
+      g.font = (ok ? "600 " : "") + "28px " + SERIF;
+      g.fillText(a.nm, PAD + 74, y - 2);
+
+      g.textAlign = "right";
+      g.fillStyle = ok ? "#a63a2a" : "#8d8577";
+      g.font = "20px " + SERIF;
+      g.fillText(ok ? "已完成" : "未收束", W - PAD, y + 3);
+      g.textAlign = "left";
+      y += 64;
+    }
+
+    g.strokeStyle = "#c0b49d"; g.lineWidth = 1;               /* --line2 */
+    g.beginPath(); g.moveTo(PAD, H - 86); g.lineTo(W - PAD, H - 86); g.stroke();
+    g.fillStyle = "#5c554b"; g.font = "20px " + SERIF;
+    g.fillText("dcd887.github.io/honglou-tuili", PAD, H - 66);
+    g.textAlign = "right";
+    g.fillStyle = "#8d8577"; g.font = "18px " + SERIF;
+    g.fillText("建議電腦或橫屏遊玩 · 進度自動保存", W - PAD, H - 68);
+    g.textAlign = "left";
+
+    var dl = document.createElement("a");
+    dl.download = "honglou-wumuhejuan.png";
+    dl.href = c.toDataURL("image/png");
+    dl.click();
+  }catch(e){
+    hint.textContent = "分享卡生成失敗 —— 可直接截圖保存。";
+  }
+});
+
+/* ══ 6. 鍵盤 1–5 ═════════════════════════════════════════════════════ */
 document.addEventListener("keydown", function(e){
   if(e.key >= "1" && e.key <= "5"){
     location.href = ACTS[+e.key - 1].file;
